@@ -1,0 +1,54 @@
+from omegaconf import DictConfig
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import CosineAnnealingLR, _LRScheduler
+
+from ..utils import LR_SCHEDULERS
+
+__all__ = [
+    "cosineAnnealingLRWarmUp",
+]
+
+
+class CosineAnnealingLRWarmUp(_LRScheduler):
+    def __init__(
+        self,
+        optimizer: Optimizer,
+        num_epochs: int,
+        warmup=0,
+        eta_min=0.0,
+        last_epoch=-1,
+        verbose=False,
+    ):
+        self.warmup = warmup
+        self.eta_min = eta_min
+        self.scheduler = CosineAnnealingLR(
+            optimizer, num_epochs - warmup, eta_min, last_epoch, verbose
+        )
+        super().__init__(optimizer, last_epoch, verbose)
+
+    def step(self, epoch=None):
+        if epoch is None:
+            epoch = self.last_epoch + 1
+        self.last_epoch = epoch
+        if self.last_epoch < self.warmup:
+            for group, lr in zip(self.optimizer.param_groups, self.get_lr()):
+                group["lr"] = lr
+        elif self.last_epoch == self.warmup:
+            for group, lr in zip(self.optimizer.param_groups, self.base_lrs):
+                group["lr"] = lr
+        else:
+            self.scheduler.step()
+
+    def get_lr(self):
+        lrs = []
+        for base_lr in self.base_lrs:
+            k = (base_lr - self.eta_min) / (self.warmup + 1)
+            b = k
+            lr = k * self.last_epoch + b
+            lrs.append(lr)
+        return lrs
+
+
+@LR_SCHEDULERS.register
+def cosineAnnealingLRWarmUp(cfg: DictConfig, optimizer: Optimizer):
+    return CosineAnnealingLRWarmUp(optimizer, cfg.num_epochs, cfg.warmup)
