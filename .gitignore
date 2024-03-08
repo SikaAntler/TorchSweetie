@@ -1,3 +1,7 @@
+# pyproject
+/build/
+/torchsweetie.egg-info/
+
 # Python
 __pycache__/
 

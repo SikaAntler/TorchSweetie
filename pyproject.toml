@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "torchsweetie"
+requires-python = ">=3.10"
+authors = [{ name = "Tianhong Liang", email = "lngtnhng97@gmail.com" }]
+description = "A tiny framework based on PyTorch for helping train models like your sweetie."
+readme = "README.md"
+license = { file = "LICENSE" }
+dynamic = ["version"]
+dependencies = [
+  "accelerate",
+  "matplotlib",
+  "natsort",
+  "numpy",
+  "omegaconf",
+  "pandas",
+  "pillow",
+  "pypinyin",
+  "pyyaml",
+  "rich",
+  "scikit-learn",
+  "torch",
+  "torchvision",
+  "tqdm",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "torchsweetie.__version__" }
