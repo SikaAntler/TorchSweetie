@@ -16,6 +16,8 @@ dependencies = [
   "natsort",
   "numpy",
   "omegaconf",
+  "onnx",
+  "onnxsim",
   "pandas",
   "pillow",
   "pypinyin",

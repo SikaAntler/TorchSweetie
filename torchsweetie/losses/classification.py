@@ -76,7 +76,7 @@ class BCELoss(nn.BCELoss):
 
 
 @LOSSES.register
-def bCELoss(cfg: DictConfig):
+def bceLoss(cfg: DictConfig):
     # labels_one_hot = torch.zeros_like(logits)
     # labels = labels_one_hot.scatter(1, labels.view(-1, 1), 1)
     # loss = -(labels * logits.log() + (1 - labels) * (1 - logits).log()).mean()
@@ -88,7 +88,7 @@ class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
 
 
 @LOSSES.register
-def bCEWithLogitsLoss(cfg: DictConfig):
+def bceWithLogitsLoss(cfg: DictConfig):
     return BCEWithLogitsLoss()
 
 
@@ -129,10 +129,10 @@ def centerLoss(cfg: DictConfig):
 
 
 class CEWithLinearLoss(nn.Module):
-    def __init__(self, num_features: int, num_classes: int) -> None:
+    def __init__(self, in_features: int, num_classes: int) -> None:
         super().__init__()
 
-        self.fc = nn.Linear(num_features, num_classes)
+        self.fc = nn.Linear(in_features, num_classes)
         self.loss_fn = nn.CrossEntropyLoss()
 
     def forward(self, embeddings: Tensor, labels: LongTensor = None):
@@ -147,8 +147,8 @@ class CEWithLinearLoss(nn.Module):
 
 
 @LOSSES.register
-def cEWithLinearLoss(cfg: DictConfig):
-    return CEWithLinearLoss(cfg.num_features, cfg.num_classes)
+def ceWithLinearLoss(cfg: DictConfig):
+    return CEWithLinearLoss(cfg.in_features, cfg.num_classes)
 
 
 class CrossEntropyLoss(nn.CrossEntropyLoss):

@@ -130,8 +130,9 @@ class ClsTester:
             raise ValueError
         weights = list(self.run_dir.glob(weights))
         if len(weights) != 1:
-            print(f"{len(weights)} have been found.")
-        load_weights(module, weights[0])
+            print(f"{len(weights)} weights have been found, {weights[0]} has been used")
+        weights = weights[0]
+        load_weights(module, weights)
         module.cuda()
 
     def _print_report(self, report: dict, detailed: bool) -> None:
