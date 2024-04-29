@@ -61,6 +61,9 @@ class ClsTester:
         self.y_true = []
         self.y_pred = []
 
+        # Store the embeddings output by model
+        self.embeddings = []
+
     def report(
         self, digits: int = 3, detailed: bool = True, export: bool = False
     ) -> None:
@@ -82,7 +85,7 @@ class ClsTester:
             report.to_csv(filename)
 
     @torch.no_grad()
-    def test(self) -> None:
+    def test(self, store_embeddings: bool = False) -> None:
         pbar = tqdm(
             desc=f"Testing the {self.best_or_last} model",
             total=len(self.dataloader),
@@ -100,13 +103,20 @@ class ClsTester:
             self.y_true.extend(labels.tolist())
             images, labels = images.cuda(), labels.cuda()
             outputs = self.model(images)
+
             if self.cfg.loss.get("weights"):
                 outputs = self.loss_fn(outputs, labels)
+
+            if store_embeddings:
+                self.embeddings.append(outputs)
 
             predicts = torch.argmax(outputs, dim=1)
             self.y_pred.extend(predicts.tolist())
 
             pbar.update()
+
+        if store_embeddings:
+            self.embeddings = torch.concat(self.embeddings)
 
         pbar.close()
 
