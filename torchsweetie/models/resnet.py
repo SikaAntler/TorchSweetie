@@ -5,7 +5,7 @@ import torch.nn as nn
 from rich import print
 from torchvision.models import Weights, resnet, resnet152
 
-from ..utils import MODELS, load_weights
+from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 __all__ = [
     "resnet18",
@@ -119,8 +119,8 @@ def _init_model(
     if weights == "torchvision":
         _weights: Weights = _pretrained_weights[model_name]
         print(
-            f"Using [bold magenta]pretrained[/bold magenta] weights",
-            f"from [bold magenta]torchvision[/bold magenta]([bold cyan]{_weights.url}[/bold cyan])",
+            f"Using {KEY_B}pretrained{KEY_E} weights",
+            f"from {KEY_B}torchvision{KEY_E}({URL_B}{_weights.url}{URL_E})",
         )
         model = _resnet_models[model_name](weights=_weights)
         if num_classes != 1000:

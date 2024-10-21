@@ -5,15 +5,13 @@ import torch
 import torch.nn as nn
 from rich import print
 
+from .color import URL_B, URL_E
+
 
 def load_weights(
     module: nn.Module, filename: Union[Path, str], rm_ddp=False, strict=False
 ) -> None:
-    # print(
-    #     f"Loading [bold magenta]weights[/bold magenta]",
-    #     f"from: [bold cyan]{filename}[/bold cyan]",
-    # )
-    print(f"Loading weights from: {filename}")
+    print(f"Loading weights from: {URL_B}{filename}{URL_E}")
     weights = torch.load(filename, map_location="cpu")
 
     if rm_ddp:

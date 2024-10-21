@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 from rich import print
 
-from torchsweetie.utils import LOSSES, MODELS, get_config, load_weights
+from ..utils import KEY_B, KEY_E, LOSSES, MODELS, URL_B, URL_E, get_config, load_weights
 
 
 class ClsExporter:
@@ -89,20 +89,20 @@ class ClsExporter:
         torch.onnx.export(
             self.model,
             x,
-            f,  # type: ignore
+            f,  # pyright: ignore
             input_names=[input_name],
             output_names=[output_name],
-            dynamic_axes=dynamic_axes,  # type: ignore
+            dynamic_axes=dynamic_axes,
         )
-        print(f"Saved the [bold magenta]onnx[/bold magenta] model: [cyan]{f}[/cyan]")
+        print(f"Saved the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
 
         print("Starting to simplify...")
         if simplify:
-            model = onnx.load(f)  # type: ignore
+            model = onnx.load(f)
             model, check = onnxsim.simplify(model)
             assert check, "assert check failed"
-            onnx.save(model, f)  # type: ignore
-        print(f"Saved the [bold magenta]simplified[/bold magenta] model: [cyan]{f}[/cyan]")
+            onnx.save(model, f)
+        print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
 
     # def _load_weights(self, module: nn.Module, model_or_loss: Literal["model", "loss"]):
     #     # Find the weight file, load and send to gpu

@@ -27,12 +27,14 @@ class ClsDataset(Dataset):
 
         return image, label
 
-    def _load_dataset(self, csv_file: str) -> tuple[list[str], list[int]]:
-        dataset = pd.read_csv(csv_file, header=None)
-        images = dataset[0].to_list()
-        labels = dataset[1].to_list()
+    def transform(self, image: Image.Image) -> FloatTensor:  # pyright: ignore
+        raise NotImplementedError
 
-        return images, labels
+    @staticmethod
+    def gray2rgb(image: Image.Image) -> Image.Image:
+        image = image.convert("RGB")
+
+        return image
 
     @staticmethod
     def random_resize(image: Image.Image, scale: tuple[float, float]) -> Image.Image:
@@ -59,9 +61,7 @@ class ClsDataset(Dataset):
         width, height = image.size
 
         img_w, img_h = img_size
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-        new_img = Image.new(image.mode, (img_w, img_h), pad_value)  # type: ignore
+        new_img = Image.new(image.mode, (img_w, img_h), pad_value)  # pyright: ignore
 
         ratio_w = img_w / width
         ratio_h = img_h / height
@@ -78,5 +78,40 @@ class ClsDataset(Dataset):
 
         return new_img
 
-    def transform(self, image: Image.Image) -> FloatTensor:  # type: ignore
-        raise NotImplementedError
+    def remain_size(
+        self,
+        image: Image.Image,
+        img_size: tuple[int, int],
+        pad_value: tuple[int, int, int],
+    ) -> Image.Image:
+        width, height = image.size
+
+        img_w, img_h = img_size
+
+        if width <= img_w and height <= img_h:
+            new_img = Image.new(
+                image.mode, (img_w, img_h), pad_value  # pyright: ignore
+            )
+            left = (img_w - width) // 2
+            top = (img_h - height) // 2
+            new_img.paste(image, (left, top))
+        else:
+            new_img = self.resize_longer(image, img_size, pad_value)
+
+        return new_img
+
+    @staticmethod
+    def rotate_vertical(image: Image.Image) -> Image.Image:
+        width, height = image.size
+
+        if width > height:
+            image = image.rotate(90, Image.Resampling.BILINEAR, True)
+
+        return image
+
+    def _load_dataset(self, csv_file: str) -> tuple[list[str], list[int]]:
+        dataset = pd.read_csv(csv_file, header=None)
+        images = dataset[0].to_list()
+        labels = dataset[1].to_list()
+
+        return images, labels

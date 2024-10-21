@@ -6,8 +6,8 @@ from rich import print
 from sklearn.metrics import classification_report
 from tqdm import tqdm
 
-from torchsweetie.data import create_cls_dataloader
-from torchsweetie.utils import LOSSES, MODELS, get_config, load_weights
+from ..data import create_cls_dataloader
+from ..utils import DIR_B, DIR_E, LOSSES, MODELS, get_config, load_weights
 
 
 class ClsTester:
@@ -22,7 +22,9 @@ class ClsTester:
         # Running directory, used to record results and models
         self.run_dir = ROOT / "runs" / self.cfg_file.stem / exp_name
         assert self.run_dir.exists()
-        print(f"Running directory: [cyan]{self.run_dir}[/cyan]:white_heavy_check_mark:")
+        print(
+            f"Running directory: {DIR_B}{self.run_dir}{DIR_E}:white_heavy_check_mark:"
+        )
 
         # self.best_or_last = best_or_last
 
@@ -70,7 +72,7 @@ class ClsTester:
             target_names=self.target_names,
             digits=digits,
             output_dict=True,
-            zero_division=0.0,  # type: ignore
+            zero_division=0.0,  # pyright: ignore
         )
 
         self._print_report(report, detailed)
@@ -86,7 +88,9 @@ class ClsTester:
         pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=80)
 
         if len(self.y_true) + len(self.y_pred) != 0:
-            tqdm.write(f"You may run the test twice, since y_true and y_pred are not empty.")
+            tqdm.write(
+                f"You may run the test twice, since y_true and y_pred are not empty."
+            )
 
         self.model.eval()
         if self.loss_fn is not None:

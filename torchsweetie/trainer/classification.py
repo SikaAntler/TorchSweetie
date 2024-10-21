@@ -10,7 +10,17 @@ from rich import print
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..utils import LOSSES, LR_SCHEDULERS, MODELS, OPTIMIZERS, get_config
+from ..utils import (
+    DIR_B,
+    DIR_E,
+    KEY_B,
+    KEY_E,
+    LOSSES,
+    LR_SCHEDULERS,
+    MODELS,
+    OPTIMIZERS,
+    get_config,
+)
 
 
 class ClsTrainer:
@@ -34,7 +44,7 @@ class ClsTrainer:
         if mixed_precision is None:
             mixed_precision = "no"
         else:
-            print(f"Using mixed precision: {mixed_precision}")
+            print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.accelerator = Accelerator(
             split_batches=split_batch, mixed_precision=mixed_precision
         )
@@ -46,7 +56,7 @@ class ClsTrainer:
             date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
             self.run_dir = ROOT / "runs" / self.cfg_file.stem / date_time
             self.run_dir.mkdir(parents=True)
-            print(f"Running directory: [cyan]{self.run_dir}[/cyan]")
+            print(f"Running directory: {DIR_B}{self.run_dir}{DIR_E}")
 
         # Model
         model = MODELS.create(self.cfg.model)
@@ -110,11 +120,11 @@ class ClsTrainer:
         if save_cfg is None:
             self.save_interval = 999
             self.save_last = True
-            self.save_best = True
+            self.save_best = False
         else:
             self.save_interval = self.cfg.save.get("interval", 999)
             self.save_last = self.cfg.save.get("last", True)
-            self.save_best = self.cfg.save.get("best", True)
+            self.save_best = self.cfg.save.get("best", False)
 
         # Useful parameters
         if self.accelerator.is_main_process:
@@ -243,19 +253,19 @@ class ClsTrainer:
 
     def _record(self) -> None:
         self.results.append((self.epoch, self.avg_loss, self.accuracy))
-        df = pd.DataFrame(self.results, columns=["Epoch", "Loss", "Accuracy"])  # type: ignore
+        df = pd.DataFrame(self.results, columns=["Epoch", "Loss", "Accuracy"])  # pyright: ignore
         df.to_csv(self.run_dir / "record.csv", index=False)
 
         # Save the interval(epoch)
         if (self.epoch + 1) % self.save_interval == 0:
             self._save("epoch")
 
-        # Save the best
-        if self.epoch == self.num_epochs - 1:
+        # Save the last epoch
+        if self.save_last and (self.epoch == self.num_epochs - 1):
             self._save("last")
 
         # Save the best epoch
-        if self.accuracy > self.best_acc:
+        if self.save_best and (self.accuracy > self.best_acc):
             (self.run_dir / f"best-{self.best_epoch}.pth").unlink(missing_ok=True)
             (self.run_dir / f"best-{self.best_epoch}-loss.pth").unlink(missing_ok=True)
             self.best_acc = self.accuracy

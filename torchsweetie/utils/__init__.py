@@ -1,3 +1,4 @@
+from .color import *
 from .config import get_config
 from .preprocessing import split_dataset
 from .registry import (
