@@ -1,12 +1,12 @@
 from .config import get_config
 from .preprocessing import split_dataset
 from .registry import (
+    BATCH_SAMPLERS,
     DATASETS,
     LOSSES,
     LR_SCHEDULERS,
     MODELS,
     OPTIMIZERS,
-    SAMPLERS,
     UTILS,
     Registry,
 )
@@ -21,7 +21,7 @@ __all__ = [
     "LR_SCHEDULERS",
     "MODELS",
     "OPTIMIZERS",
-    "SAMPLERS",
+    "BATCH_SAMPLERS",
     "UTILS",
     "Registry",
     "smart_sort",

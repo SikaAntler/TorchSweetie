@@ -1,15 +1,14 @@
 from pathlib import Path
-from typing import Iterator, Optional, Sized, Union
+from typing import Iterator, Sized, Union
 
 import numpy as np
 import pandas as pd
 import torch
 from numpy import ndarray
-from omegaconf import DictConfig
 from torch import FloatTensor
 from torch.utils.data import Sampler
 
-from ..utils import SAMPLERS
+from ..utils import BATCH_SAMPLERS
 
 __all__ = [
     "ReSamplerBase",
@@ -50,6 +49,7 @@ class ReSamplerBase(Sampler[int]):
         yield from iter(samplers.tolist())
 
 
+@BATCH_SAMPLERS.register()
 class ClassBalancedSampler(ReSamplerBase):
     def __init__(self, data_source: Sized) -> None:
         super().__init__(data_source)
@@ -60,11 +60,7 @@ class ClassBalancedSampler(ReSamplerBase):
         self._prob_to_weights(prob)
 
 
-@SAMPLERS.register
-def classBalancedSampler(cfg: DictConfig, data_source: Sized):
-    return ClassBalancedSampler(data_source)
-
-
+@BATCH_SAMPLERS.register()
 class SquareRootSampler(ReSamplerBase):
     def __init__(self, data_source: Sized, dist_file: Union[Path, str]) -> None:
         super().__init__(data_source)
@@ -77,11 +73,7 @@ class SquareRootSampler(ReSamplerBase):
         self._prob_to_weights(prob)
 
 
-@SAMPLERS.register
-def squareRootSampler(cfg: DictConfig, data_source: Sized):
-    return SquareRootSampler(data_source, cfg.dist_file)
-
-
+@BATCH_SAMPLERS.register()
 class ClassBalancedBatchSampler(Sampler[list[int]]):
     def __init__(
         self,
@@ -117,10 +109,3 @@ class ClassBalancedBatchSampler(Sampler[list[int]]):
             )
             sampled_indices.extend(indices)
         return sampled_indices
-
-
-@SAMPLERS.register
-def classBalancedBatchSampler(cfg: DictConfig, data_source: Optional[Sized]):
-    return ClassBalancedBatchSampler(
-        data_source, cfg.num_classes, cfg.num_sample_classes, cfg.samples_per_class
-    )

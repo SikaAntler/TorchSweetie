@@ -1,40 +1,34 @@
 import random
 
 import pandas as pd
-from omegaconf import DictConfig
 from PIL import Image
-from torch import FloatTensor, LongTensor
+from torch import FloatTensor
 from torch.utils.data import Dataset
 
 
 class ClsDataset(Dataset):
-    def __init__(self, cfg: DictConfig, task: str) -> None:
+    def __init__(self, csv_file: str, target_names: str) -> None:
         super().__init__()
 
-        self.cfg = cfg
-        self.task = task
-
-        self.images, self.labels = self._load_dataset()
+        self.images, self.labels = self._load_dataset(csv_file)
+        self.target_names = target_names
 
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __getitem__(self, idx: int) -> tuple[FloatTensor, LongTensor]:
+    def __getitem__(self, idx: int) -> tuple[FloatTensor, int]:
         image, label = self.images[idx], self.labels[idx]
 
         image = Image.open(image)
         if image.mode != "RGB":
             image = image.convert("RGB")
 
-        if self.task == "train":
-            image = self.transform_train(image)
-        else:
-            image = self.transform_val(image)
+        image = self.transform(image)
 
         return image, label
 
-    def _load_dataset(self) -> tuple[list[str], list[int]]:
-        dataset = pd.read_csv(self.cfg[self.task], header=None)
+    def _load_dataset(self, csv_file: str) -> tuple[list[str], list[int]]:
+        dataset = pd.read_csv(csv_file, header=None)
         images = dataset[0].to_list()
         labels = dataset[1].to_list()
 
@@ -58,26 +52,31 @@ class ClsDataset(Dataset):
 
     @staticmethod
     def resize_longer(
-        image: Image.Image, img_size: int, pad_value: tuple[int, int, int]
+        image: Image.Image,
+        img_size: tuple[int, int],
+        pad_value: tuple[int, int, int],
     ) -> Image.Image:
         width, height = image.size
 
-        new_img = Image.new(image.mode, (img_size, img_size), pad_value)
+        img_w, img_h = img_size
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        new_img = Image.new(image.mode, (img_w, img_h), pad_value)  # type: ignore
 
-        ratio = max(width, height) / img_size
-        if width >= height:
-            image = image.resize(size=(img_size, int(height / ratio)))
-            top = (img_size - image.height) // 2
-            new_img.paste(image, (0, top))
-        elif width < height:
-            image = image.resize(size=(int(width / ratio), img_size))
-            left = (img_size - image.width) // 2
+        ratio_w = img_w / width
+        ratio_h = img_h / height
+        if ratio_w >= ratio_h:
+            w = int(ratio_h * width)
+            image = image.resize(size=(w, img_h))
+            left = (img_w - w) // 2
             new_img.paste(image, (left, 0))
+        elif ratio_w < ratio_h:
+            h = int(ratio_w * height)
+            image = image.resize(size=(img_w, h))
+            top = (img_h - h) // 2
+            new_img.paste(image, (0, top))
 
         return new_img
 
-    def transform_train(self, image: Image.Image):
-        raise NotImplementedError
-
-    def transform_val(self, image: Image.Image):
+    def transform(self, image: Image.Image) -> FloatTensor:  # type: ignore
         raise NotImplementedError

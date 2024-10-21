@@ -14,7 +14,6 @@ In order to uniform naming convention and reduce confusions, there are some rule
     N means the number of features **before** fc. 
 """
 
-
 from math import sqrt
 from pathlib import Path
 from typing import Union
@@ -24,7 +23,6 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from omegaconf import DictConfig
 from torch import FloatTensor, LongTensor, Tensor
 
 from ..utils import LOSSES
@@ -45,6 +43,7 @@ __all__ = [
 ]
 
 
+@LOSSES.register()
 class BalancedSoftmaxLoss(nn.Module):
     """Implementation of the paper 'Balanced Meta-Softmax for Long-Tailed Visual Recognition'."""
 
@@ -66,32 +65,20 @@ class BalancedSoftmaxLoss(nn.Module):
         return self.loss_fn(logits, labels)
 
 
-@LOSSES.register
-def balancedSoftmaxLoss(cfg: DictConfig):
-    return BalancedSoftmaxLoss(cfg.dist_file)
-
-
+@LOSSES.register()
 class BCELoss(nn.BCELoss):
-    pass
-
-
-@LOSSES.register
-def bceLoss(cfg: DictConfig):
     # labels_one_hot = torch.zeros_like(logits)
     # labels = labels_one_hot.scatter(1, labels.view(-1, 1), 1)
     # loss = -(labels * logits.log() + (1 - labels) * (1 - logits).log()).mean()
-    return BCELoss()
+    pass
 
 
+@LOSSES.register()
 class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
     pass
 
 
-@LOSSES.register
-def bceWithLogitsLoss(cfg: DictConfig):
-    return BCEWithLogitsLoss()
-
-
+@LOSSES.register()
 class CenterLoss(nn.Module):
     """Implementation of the paper 'A Discriminative Feature Learning Approach for Deep Face Recognition'."""
 
@@ -107,7 +94,7 @@ class CenterLoss(nn.Module):
         self.fc = nn.Linear(in_features, num_classes)
         self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, embeddings, labels: LongTensor = None):
+    def forward(self, embeddings, labels=None):
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
@@ -123,11 +110,7 @@ class CenterLoss(nn.Module):
             return logits
 
 
-@LOSSES.register
-def centerLoss(cfg: DictConfig):
-    return CenterLoss(cfg.in_features, cfg.num_classes, cfg.lambda_)
-
-
+@LOSSES.register()
 class CEWithLinearLoss(nn.Module):
     def __init__(self, in_features: int, num_classes: int) -> None:
         super().__init__()
@@ -135,7 +118,7 @@ class CEWithLinearLoss(nn.Module):
         self.fc = nn.Linear(in_features, num_classes)
         self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, embeddings: Tensor, labels: LongTensor = None):
+    def forward(self, embeddings: Tensor, labels=None):
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
@@ -146,23 +129,12 @@ class CEWithLinearLoss(nn.Module):
             return logits
 
 
-@LOSSES.register
-def ceWithLinearLoss(cfg: DictConfig):
-    return CEWithLinearLoss(cfg.in_features, cfg.num_classes)
-
-
+@LOSSES.register()
 class CrossEntropyLoss(nn.CrossEntropyLoss):
     pass
 
 
-@LOSSES.register
-def crossEntropyLoss(cfg: DictConfig):
-    # -logits.log_softmax(1).gather(1, labels.view(-1, 1)).mean()
-    label_smoothing = cfg.get("label_smoothing", 0)
-
-    return CrossEntropyLoss(label_smoothing=label_smoothing)
-
-
+@LOSSES.register()
 class EffectiveNumberLoss(nn.Module):
     def __init__(self, dist_file: Union[Path, str], beta: float) -> None:
         super().__init__()
@@ -180,11 +152,7 @@ class EffectiveNumberLoss(nn.Module):
         return loss
 
 
-@LOSSES.register
-def effectiveNumberLoss(cfg: DictConfig):
-    return EffectiveNumberLoss(cfg.dist_file, cfg.beta)
-
-
+@LOSSES.register()
 class FocalLoss(nn.Module):
     """Implementation of the paper 'Focal Loss for Dense Object Detection'."""
 
@@ -205,11 +173,7 @@ class FocalLoss(nn.Module):
         return loss
 
 
-@LOSSES.register
-def focalLoss(cfg: DictConfig):
-    return FocalLoss(cfg.gamma, cfg.alpha)
-
-
+@LOSSES.register()
 class LogitAdjustedLoss(nn.Module):
     """Implementation of the paper 'LONG-TAIL LEARNING VIA LOGIT ADJUSTMENT'."""
 
@@ -230,11 +194,7 @@ class LogitAdjustedLoss(nn.Module):
         return loss
 
 
-@LOSSES.register
-def logitAdjustedLoss(cfg: DictConfig):
-    return LogitAdjustedLoss(cfg.dist_file, cfg.tau)
-
-
+@LOSSES.register("FeatureCenterConstraint")
 class NormalizedCenterLoss(nn.Module):
     def __init__(self, in_features: int, num_classes: int, lambda_: float) -> None:
         super().__init__()
@@ -248,7 +208,7 @@ class NormalizedCenterLoss(nn.Module):
         self.fc = nn.Linear(in_features, num_classes)
         self.loss_fn = nn.CrossEntropyLoss()
 
-    def forward(self, embeddings: Tensor, labels: LongTensor = None):
+    def forward(self, embeddings: Tensor, labels=None):
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
@@ -267,11 +227,7 @@ class NormalizedCenterLoss(nn.Module):
             return logits
 
 
-@LOSSES.register
-def normalizedCenterLoss(cfg: DictConfig):
-    return NormalizedCenterLoss(cfg.in_features, cfg.num_classes, cfg.lambda_)
-
-
+@LOSSES.register()
 class ReWeightCELoss(nn.Module):
     def __init__(self, dist_file: Union[Path, str]) -> None:
         super().__init__()
@@ -287,11 +243,7 @@ class ReWeightCELoss(nn.Module):
         return loss
 
 
-@LOSSES.register
-def reWeightCELoss(cfg: DictConfig):
-    return ReWeightCELoss(cfg.dist_file)
-
-
+@LOSSES.register()
 class TauNormalizedLoss(nn.Module):
     def __init__(self, tau: float) -> None:
         super().__init__()
@@ -307,8 +259,3 @@ class TauNormalizedLoss(nn.Module):
         loss = self.loss_fn(logits, labels)
 
         return loss
-
-
-@LOSSES.register
-def tauNormalizedLoss(cfg: DictConfig):
-    return TauNormalizedLoss(cfg.tau)

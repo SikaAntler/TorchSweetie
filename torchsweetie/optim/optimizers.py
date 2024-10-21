@@ -1,4 +1,3 @@
-from omegaconf import DictConfig
 from torch.nn import Module
 from torch.optim import SGD, AdamW
 
@@ -12,15 +11,15 @@ __all__ = [
 _NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]
 
 
-@OPTIMIZERS.register
-def adamW(cfg: DictConfig, model: Module | list[Module]):
-    params = _set_weight_decay(model, cfg.weight_decay)
-    return AdamW(params, cfg.lr)
+@OPTIMIZERS.register("AdamW")
+def adamW(model: Module | list[Module], lr: float, weight_decay: float):
+    params = _set_weight_decay(model, weight_decay)
+    return AdamW(params, lr)
 
 
-@OPTIMIZERS.register
-def sgd(cfg: DictConfig, model: Module | list[Module]):
-    params = _set_weight_decay(model, cfg.weight_decay)
+@OPTIMIZERS.register("SGD")
+def sgd(model: Module | list[Module], lr: float, momentum: float, weight_decay: float):
+    params = _set_weight_decay(model, weight_decay)
 
     # if loss_fn is not None:
     #     loss_group = []
@@ -28,10 +27,10 @@ def sgd(cfg: DictConfig, model: Module | list[Module]):
     #         loss_group.append(param)
     #     params.append(loss_fn)
 
-    return SGD(params, cfg.lr, cfg.momentum)
+    return SGD(params, lr, momentum)
 
 
-def _loop_params(params: dict, module: Module):
+def _loop_params(params: list, module: Module):
     for name, param in module.named_parameters():
         # Ignore the params which are freezed, equal to filter(lambda ...)
         if not param.requires_grad:

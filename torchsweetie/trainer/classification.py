@@ -1,6 +1,7 @@
 import os
+from datetime import datetime
 from pathlib import Path
-from typing import Union
+from typing import Literal, Union
 
 import pandas as pd
 import torch
@@ -9,14 +10,7 @@ from rich import print
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..utils import (
-    LOSSES,
-    LR_SCHEDULERS,
-    MODELS,
-    OPTIMIZERS,
-    UTILS,
-    get_config,
-)
+from ..utils import LOSSES, LR_SCHEDULERS, MODELS, OPTIMIZERS, get_config
 
 
 class ClsTrainer:
@@ -49,62 +43,82 @@ class ClsTrainer:
         # Running directory, used to record results and models
         # Only executed by the main process
         if self.accelerator.is_main_process:
-            self.run_dir = ROOT / "runs" / self.cfg_file.stem
-            times = 0
-            while self.run_dir.exists():
-                times += 1
-                self.run_dir = ROOT / "runs" / f"{self.cfg_file.stem}-{times}"
+            date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+            self.run_dir = ROOT / "runs" / self.cfg_file.stem / date_time
             self.run_dir.mkdir(parents=True)
-            print(f"Running directory: {self.run_dir}:new:")
+            print(f"Running directory: [cyan]{self.run_dir}[/cyan]")
 
         # Model
         model = MODELS.create(self.cfg.model)
 
         # TODO: 需要freeze功能，初步设想是提供一个UTILS函数注册器
-        if self.cfg.train.get("freeze"):
-            UTILS.create(self.cfg.train.freeze, model)
+        # if self.cfg.train.get("freeze"):
+        #     UTILS.create(self.cfg.train.freeze, model)
 
         # Synchronize BN for DDP mode
-        if self.cfg.model.get("sync_bn", False):
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+        if self.cfg.train.get("sync_bn", False):
+            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
         # Loss Function
-        loss_fn = LOSSES.create(self.cfg.loss)
+        loss_cfg = self.cfg.loss
+        if loss_cfg.get("weights", False):
+            self.loss_weights = loss_cfg.pop("weights")
+        else:
+            self.loss_weights = False
+        loss_fn = LOSSES.create(loss_cfg)
 
         # Optimizer & LR Scheduler
-        optimizer = OPTIMIZERS.create(self.cfg.optimizer, model)
-        if self.cfg.get("lr_scheduler"):
-            lr_scheduler = LR_SCHEDULERS.create(self.cfg.lr_scheduler, optimizer)
+        optimizer = OPTIMIZERS.create(model, self.cfg.optimizer)
+        lr_scheduler_cfg = self.cfg.get("lr_scheduler")
+        if lr_scheduler_cfg is None:
+            self.lr_scheduler = None
+        else:
+            lr_scheduler = LR_SCHEDULERS.create(optimizer, lr_scheduler_cfg)
             self.lr_scheduler = self.accelerator.prepare(lr_scheduler)
 
         # Train & Val DataLoaders
-        dataloader_train = create_cls_dataloader(
-            self.cfg.dataloader, "train", True, True
-        )
-        dataloader_val = create_cls_dataloader(self.cfg.dataloader, "val", False, False)
+        train_dataloader = create_cls_dataloader(self.cfg.train_dataloader)
+        val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
 
         # Prepare all
         (
             self.model,
             self.loss_fn,
             self.optimizer,
-            self.dataloader_train,
-            self.dataloader_val,
+            self.train_dataloader,
+            self.val_dataloader,
         ) = self.accelerator.prepare(
-            model, loss_fn, optimizer, dataloader_train, dataloader_val
+            model, loss_fn, optimizer, train_dataloader, val_dataloader
         )
 
-        # Useful parameters
+        # Train
         self.num_epochs = self.cfg.train.num_epochs
-        self.best_or_last = self.cfg.train.best_or_last
-        # TODO: best_or_last应该有best、last和both三种
-        if self.best_or_last == "last":
-            self.record_last_n_epochs = 1
+        self.clip_grad = self.cfg.train.get("clip_grad")
+        if self.clip_grad is not None:
+            self.max_norm = self.clip_grad.max_norm
+            self.norm_type = self.clip_grad.get("norm_type", 2)
+        # Val
+        val_cfg = self.cfg.get("val")
+        if val_cfg is None:
+            self.val_interval = 1
+            self.val_skip = False
         else:
-            self.record_last_n_epochs = self.cfg.record_last_n_epochs
+            self.val_interval = self.cfg.val.get("interval", 1)
+            self.val_skip = self.cfg.val.get("skip", False)
+        # Save
+        save_cfg = self.cfg.get("save")
+        if save_cfg is None:
+            self.save_interval = 999
+            self.save_last = True
+            self.save_best = True
+        else:
+            self.save_interval = self.cfg.save.get("interval", 999)
+            self.save_last = self.cfg.save.get("last", True)
+            self.save_best = self.cfg.save.get("best", True)
 
+        # Useful parameters
         if self.accelerator.is_main_process:
-            self.accuracy = None
+            self.accuracy = 0
             self.avg_loss = None
             self.best_acc = 0
             self.best_epoch = -1
@@ -112,27 +126,6 @@ class ClsTrainer:
             # self.loss_iters = []
 
     def train(self) -> None:
-        # self.progress = Progress(
-        #     TextColumn("[progress.description]{task.description}"),
-        #     "[{task.completed}/{task.total}]",
-        #     BarColumn(),
-        #     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        #     TimeRemainingColumn(),
-        #     TimeElapsedColumn(),
-        #     disable=not self.accelerator.is_main_process,
-        # )
-
-        # with self.progress:
-        #     self.pbar_epoch = self.progress.add_task(
-        #         f"[green]Epoch", total=self.num_epochs
-        #     )
-        #     self.pbar_batch = self.progress.add_task(
-        #         "[cyan]Batch", total=len(self.dataloader_train)
-        #     )
-        #     self.pbar_val = self.progress.add_task(
-        #         "[cyan]Validation", total=len(self.dataloader_val)
-        #     )
-
         # Compute the appropriate number of columns for the terminal
         self.ncols = min(os.get_terminal_size().columns, self.NCOLS)
 
@@ -145,28 +138,18 @@ class ClsTrainer:
 
         for self.epoch in range(self.num_epochs):
             self._train_one_epoch()
-            self._val()
 
-            pbar_epochs.update()
-            pbar_epochs.set_postfix(
-                {"loss": f"{self.avg_loss:.5f}", "acc": f"{self.accuracy:.3f}"}
-            )
+            if (not self.val_skip) and ((self.epoch + 1) % self.val_interval == 0):
+                self._val()
 
             if self.accelerator.is_main_process:
+                pbar_epochs.update()
+                pbar_epochs.set_postfix(
+                    {"loss": f"{self.avg_loss:.5f}", "acc": f"{self.accuracy:.3f}"}
+                )
                 self._record()
 
         pbar_epochs.close()
-
-        #     self.progress.update(
-        #         self.pbar_epoch,
-        #         advance=1,
-        #         description=f"[green]Epoch {self.accuracy:.3f}",
-        #     )
-        #     self.progress.reset(self.pbar_batch)
-        #     self.progress.reset(self.pbar_val)
-
-        # self.progress.remove_task(self.pbar_batch)
-        # self.progress.remove_task(self.pbar_val)
 
     def _train_one_epoch(self) -> None:
         # Setting before training
@@ -176,13 +159,15 @@ class ClsTrainer:
 
         pbar_train = tqdm(
             desc="Train",
-            total=len(self.dataloader_train),
+            total=len(self.train_dataloader),
             leave=False,
             ncols=self.ncols,
             disable=not self.accelerator.is_main_process,
         )
 
-        for images, labels in self.dataloader_train:
+        for images, labels in self.train_dataloader:
+            self.optimizer.zero_grad()
+
             images, labels = images.to(self.device), labels.to(self.device)
             outputs = self.model(images)
 
@@ -194,20 +179,19 @@ class ClsTrainer:
 
             self.accelerator.backward(loss)
 
-            # TODO: clip_grad_norm
+            if self.accelerator.sync_gradients:
+                if self.clip_grad is not None:
+                    self.accelerator.clip_grad_norm_(
+                        self.model.parameters(),
+                        self.max_norm,
+                        self.norm_type,
+                    )
 
             self.accelerator.wait_for_everyone()
 
             self.optimizer.step()
-            self.optimizer.zero_grad()
 
             self.accelerator.wait_for_everyone()
-
-            # self.progress.update(
-            #     self.pbar_batch,
-            #     advance=1,
-            #     description=f"[cyan]Batch {self.avg_loss:.3f}",
-            # )
 
             pbar_train.update()
             pbar_train.set_postfix({"loss": f"{loss.item():.5f}"})
@@ -215,83 +199,80 @@ class ClsTrainer:
         pbar_train.close()
 
         # TODO: if not accelerator.optimizer_step_was_skipped:
-        if self.cfg.get("lr_scheduler"):
+        if self.lr_scheduler is not None:
             self.lr_scheduler.step()
 
-        self.avg_loss = total_loss / len(self.dataloader_train)
+        self.avg_loss = total_loss / len(self.train_dataloader)
 
     @torch.no_grad()
-    def _val(self):
+    def _val(self) -> None:
         # Setting before validation
         self.model.eval()
         self.loss_fn.eval()
 
-        corrects = 0  # for compute accuracy
-
         pbar_val = tqdm(
             desc="Val",
-            total=len(self.dataloader_val),
+            total=len(self.val_dataloader),
             leave=False,
             ncols=self.ncols,
             disable=not self.accelerator.is_main_process,
         )
 
-        for images, labels in self.dataloader_val:
+        corrects = 0
+
+        for images, labels in self.val_dataloader:
             images, labels = images.to(self.device), labels.to(self.device)
             outputs = self.model(images)
-            if self.cfg.loss.get("weights", False):
+            if self.loss_weights:
                 outputs = self.loss_fn(outputs, labels)
 
             predicts = torch.argmax(outputs, dim=1)
-            corrects += (predicts == labels).sum()
+            corrects += (predicts == labels).sum().cpu().item()
 
             # TODO: reduce or gather the metrics
             # all_outputs, all_labels = self.accelerator.gather_for_metrics(
             #     outputs, labels
             # )
 
-            # self.progress.update(self.pbar_val, advance=1)
-
             pbar_val.update()
 
         pbar_val.close()
 
         if self.accelerator.is_main_process:
-            self.accuracy = corrects.item() / len(self.dataloader_val.dataset)
+            self.accuracy = corrects / len(self.val_dataloader.dataset)
 
     def _record(self) -> None:
         self.results.append((self.epoch, self.avg_loss, self.accuracy))
-        df = pd.DataFrame(self.results, columns=["Epoch", "Loss", "Accuracy"])
+        df = pd.DataFrame(self.results, columns=["Epoch", "Loss", "Accuracy"])  # type: ignore
         df.to_csv(self.run_dir / "record.csv", index=False)
 
-        # Save the last epoch
+        # Save the interval(epoch)
+        if (self.epoch + 1) % self.save_interval == 0:
+            self._save("epoch")
+
+        # Save the best
         if self.epoch == self.num_epochs - 1:
-            self._save()
+            self._save("last")
 
-        # if self.skip_val:
-        #     return
-
-        # Save the best epoch (optional)
-        better_acc = self.accuracy > self.best_acc
-        is_save = self.epoch >= (self.num_epochs - self.record_last_n_epochs)
-        is_save = is_save and self.record_last_n_epochs != 1  # last one = last
-        if better_acc and is_save:
+        # Save the best epoch
+        if self.accuracy > self.best_acc:
             (self.run_dir / f"best-{self.best_epoch}.pth").unlink(missing_ok=True)
-            self._save()
+            (self.run_dir / f"best-{self.best_epoch}-loss.pth").unlink(missing_ok=True)
             self.best_acc = self.accuracy
             self.best_epoch = self.epoch
+            self._save("best")
 
-    def _save(self) -> None:
+    def _save(self, prefix: Literal["epoch", "last", "best"]) -> None:
         # Model
         model = self.accelerator.unwrap_model(self.model)
-        model_file = self.run_dir / f"{self.best_or_last}-{self.epoch}.pth"
+        model_file = self.run_dir / f"{prefix}-{self.epoch}.pth"
         torch.save(model.state_dict(), model_file)
-        print(f"Saved the {self.best_or_last} model: {model_file}")
+        tqdm.write(f"Saved the {prefix} model: {model_file}")
 
         # Loss
-        if not self.cfg.loss.get("weights", False):
+        if not self.loss_weights:
             return
         loss_fn = self.accelerator.unwrap_model(self.loss_fn)
-        loss_file = self.run_dir / f"{self.best_or_last}-{self.epoch}-loss.pth"
+        loss_file = self.run_dir / f"{prefix}-{self.epoch}-loss.pth"
         torch.save(loss_fn.state_dict(), loss_file)
-        print(f"Saved the {self.best_or_last} loss fn: {loss_file}")
+        tqdm.write(f"Saved the {prefix} loss fn: {loss_file}")

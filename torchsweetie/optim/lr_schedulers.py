@@ -1,23 +1,23 @@
-from omegaconf import DictConfig
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR, _LRScheduler
 
 from ..utils import LR_SCHEDULERS
 
 __all__ = [
-    "cosineAnnealingLRWarmUp",
+    "CosineAnnealingLRWarmUp",
 ]
 
 
+@LR_SCHEDULERS.register()
 class CosineAnnealingLRWarmUp(_LRScheduler):
     def __init__(
         self,
         optimizer: Optimizer,
         num_epochs: int,
-        warmup=0,
-        eta_min=0.0,
-        last_epoch=-1,
-        verbose=False,
+        warmup: int = 0,
+        eta_min: float = 0.0,
+        last_epoch: int = -1,
+        verbose: bool = False,
     ):
         self.warmup = warmup
         self.eta_min = eta_min
@@ -46,9 +46,5 @@ class CosineAnnealingLRWarmUp(_LRScheduler):
             b = k
             lr = k * self.last_epoch + b
             lrs.append(lr)
+
         return lrs
-
-
-@LR_SCHEDULERS.register
-def cosineAnnealingLRWarmUp(cfg: DictConfig, optimizer: Optimizer):
-    return CosineAnnealingLRWarmUp(optimizer, cfg.num_epochs, cfg.warmup)
