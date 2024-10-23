@@ -7,20 +7,22 @@ from sklearn.metrics import classification_report
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..utils import DIR_B, DIR_E, LOSSES, MODELS, get_config, load_weights
+from ..utils import DIR_B, DIR_E, LOSSES, MODELS, URL_B, URL_E, get_config, load_weights
 
 
 class ClsTester:
-    def __init__(self, cfg_file: Path | str, exp_name: str, weights: str) -> None:
+    def __init__(
+        self, root_dir: str, cfg_file: str, run_dir: str, exp_dir: str, weights: str
+    ) -> None:
         # Get the root path (project path)
-        ROOT = Path.cwd()
+        ROOT = Path(root_dir)
 
         # Get the absolute path of config file and load it
         self.cfg_file = ROOT / cfg_file
-        self.cfg = get_config(self.cfg_file)
+        self.cfg = get_config(ROOT, self.cfg_file)
 
         # Running directory, used to record results and models
-        self.run_dir = ROOT / "runs" / self.cfg_file.stem / exp_name
+        self.run_dir = ROOT / run_dir / self.cfg_file.stem / exp_dir
         assert self.run_dir.exists()
         print(
             f"Running directory: {DIR_B}{self.run_dir}{DIR_E}:white_heavy_check_mark:"
@@ -63,10 +65,8 @@ class ClsTester:
         # Store the embeddings output by model
         self.embeddings = []
 
-    def report(
-        self, digits: int = 3, detailed: bool = True, export: bool = False
-    ) -> None:
-        report = classification_report(
+    def report(self, digits: int = 3, export: bool = False) -> None:
+        report: dict = classification_report(
             self.y_true,
             self.y_pred,
             target_names=self.target_names,
@@ -75,13 +75,13 @@ class ClsTester:
             zero_division=0.0,  # pyright: ignore
         )
 
-        self._print_report(report, detailed)
+        self._print_report(report)
 
         if export:
-            report = pd.DataFrame(report)
+            df_report = pd.DataFrame(report)
             filename = self.run_dir / "report.csv"
-            report.to_csv(filename)
-            print(f"Saved the report: {filename}")
+            df_report.to_csv(filename)
+            print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
     @torch.no_grad()
     def test(self, store_embeddings: bool = False) -> None:
@@ -103,7 +103,7 @@ class ClsTester:
             outputs = self.model(images)
 
             if self.loss_fn is not None:
-                outputs = self.loss_fn(outputs, labels)
+                outputs = self.loss_fn(outputs, labels)  # pyright: ignore
 
             if store_embeddings:
                 embeddings.append(outputs)
@@ -118,22 +118,7 @@ class ClsTester:
 
         pbar.close()
 
-    # def _load_weights(self, module: Module, model_or_loss: Literal["model", "loss"]):
-    #     # Find the weight file, load and send to gpu
-    #     if model_or_loss == "model":
-    #         weights = f"{self.best_or_last}-*[0-9].pth"
-    #     elif model_or_loss == "loss":
-    #         weights = f"{self.best_or_last}-*[0-9]-loss.pth"
-    #     else:
-    #         raise ValueError
-    #     weights = list(self.run_dir.glob(weights))
-    #     if len(weights) != 1:
-    #         print(f"{len(weights)} weights have been found, {weights[0]} has been used")
-    #     weights = weights[0]
-    #     load_weights(module, weights)
-    #     module.cuda()
-
-    def _print_report(self, report: dict, detailed: bool) -> None:
+    def _print_report(self, report: dict) -> None:
         print(
             f"\n{'':>12}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
         )

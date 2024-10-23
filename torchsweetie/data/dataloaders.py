@@ -1,12 +1,12 @@
 from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
-from ..utils import BATCH_SAMPLERS, DATASETS
+from ..utils import BATCH_SAMPLERS
 from .datasets import ClsDataset
 
 
 def create_cls_dataloader(cfg: DictConfig) -> DataLoader:
-    dataset: ClsDataset = DATASETS.create(cfg.dataset)
+    dataset = ClsDataset(**cfg.dataset)
 
     # 判断task是因为验证和测试的时候不需要sampler了
 

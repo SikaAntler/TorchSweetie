@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 
 import pandas as pd
 import torch
@@ -26,13 +26,13 @@ from ..utils import (
 class ClsTrainer:
     NCOLS = 100
 
-    def __init__(self, cfg_file: Union[Path, str]) -> None:
+    def __init__(self, root_dir: str, cfg_file: str, run_dir: str) -> None:
         # Get the root path (project path)
-        ROOT = Path.cwd()
+        ROOT = Path(root_dir)
 
         # Get the absolute path of config file and load it
         self.cfg_file = ROOT / cfg_file
-        self.cfg = get_config(self.cfg_file)
+        self.cfg = get_config(ROOT, self.cfg_file)
 
         # Accelerator
         split_batch = False
@@ -54,7 +54,7 @@ class ClsTrainer:
         # Only executed by the main process
         if self.accelerator.is_main_process:
             date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.run_dir = ROOT / "runs" / self.cfg_file.stem / date_time
+            self.run_dir = ROOT / run_dir / self.cfg_file.stem / date_time
             self.run_dir.mkdir(parents=True)
             print(f"Running directory: {DIR_B}{self.run_dir}{DIR_E}")
 
@@ -253,7 +253,9 @@ class ClsTrainer:
 
     def _record(self) -> None:
         self.results.append((self.epoch, self.avg_loss, self.accuracy))
-        df = pd.DataFrame(self.results, columns=["Epoch", "Loss", "Accuracy"])  # pyright: ignore
+        df = pd.DataFrame(
+            self.results, columns=["Epoch", "Loss", "Accuracy"]  # pyright: ignore
+        )
         df.to_csv(self.run_dir / "record.csv", index=False)
 
         # Save the interval(epoch)

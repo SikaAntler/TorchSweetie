@@ -65,7 +65,20 @@ def main(cfg) -> None:
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--root-dir", type=str)
-    parser.add_argument("--exp-list", nargs="+", type=str)
+    parser.add_argument(
+        "--root-dir",
+        "--root",
+        type=str,
+        required=True,
+        help="path of the root directory",
+    )
+    parser.add_argument(
+        "--exp-list",
+        "--exp",
+        nargs="+",
+        type=str,
+        required=True,
+        help="list of some experiment directories (relative e.g. YYYYmmdd-HHMMSS)",
+    )
 
     main(parser.parse_args())

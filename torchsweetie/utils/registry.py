@@ -18,12 +18,6 @@ class Registry:
     def __len__(self) -> int:
         return len(self._module_dict)
 
-    # def create(self, cfg: DictConfig, *args, **kwargs) -> Any:
-    #     module = self[cfg.name]
-    #     print(f"Using the {self._name}: {cfg.name}")
-    #
-    #     return module(cfg, *args, **kwargs)
-
     @property
     def name(self) -> str:
         return self._name
@@ -59,9 +53,9 @@ class Registry:
 
 
 BATCH_SAMPLERS = Registry("sampler")
-DATASETS = Registry("dataset")
 LOSSES = Registry("loss")
 MODELS = Registry("model")
+TRANSFORMS = Registry("transform")
 UTILS = Registry("utils")
 
 
