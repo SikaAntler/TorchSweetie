@@ -2,8 +2,8 @@ from pathlib import Path
 from typing import Union
 
 import torch
-import torch.nn as nn
 from rich import print
+from torch import nn
 
 from .color import URL_B, URL_E
 

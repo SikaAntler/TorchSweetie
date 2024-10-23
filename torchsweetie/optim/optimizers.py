@@ -1,4 +1,4 @@
-from torch.nn import Module
+from torch import nn
 from torch.optim import SGD, AdamW
 
 from ..utils import OPTIMIZERS
@@ -12,13 +12,15 @@ _NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]
 
 
 @OPTIMIZERS.register("AdamW")
-def adamW(model: Module | list[Module], lr: float, weight_decay: float):
+def adamW(model: nn.Module | list[nn.Module], lr: float, weight_decay: float):
     params = _set_weight_decay(model, weight_decay)
     return AdamW(params, lr)
 
 
 @OPTIMIZERS.register("SGD")
-def sgd(model: Module | list[Module], lr: float, momentum: float, weight_decay: float):
+def sgd(
+    model: nn.Module | list[nn.Module], lr: float, momentum: float, weight_decay: float
+):
     params = _set_weight_decay(model, weight_decay)
 
     # if loss_fn is not None:
@@ -30,7 +32,7 @@ def sgd(model: Module | list[Module], lr: float, momentum: float, weight_decay: 
     return SGD(params, lr, momentum)
 
 
-def _loop_params(params: list, module: Module):
+def _loop_params(params: list, module: nn.Module):
     for name, param in module.named_parameters():
         # Ignore the params which are freezed, equal to filter(lambda ...)
         if not param.requires_grad:
@@ -48,12 +50,12 @@ def _loop_params(params: list, module: Module):
             params[0]["params"].append(param)
 
 
-def _set_weight_decay(model: Module | list[Module], weight_decay: float):
+def _set_weight_decay(model: nn.Module | list[nn.Module], weight_decay: float):
     params = [
         {"params": [], "weight_decay": weight_decay},
         {"params": []},
     ]
-    if isinstance(model, Module):
+    if isinstance(model, nn.Module):
         _loop_params(params, model)
     elif isinstance(model, list):
         for module in model:

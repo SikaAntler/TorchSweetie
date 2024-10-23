@@ -1,9 +1,9 @@
 import random
 from typing import Literal
 
-import torch.nn as nn
 import torchvision.transforms as T
 from PIL import Image
+from torch import nn
 
 from ..utils import TRANSFORMS
 

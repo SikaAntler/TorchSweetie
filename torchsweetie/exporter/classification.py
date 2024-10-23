@@ -5,8 +5,8 @@ from typing import Optional
 import onnx
 import onnxsim
 import torch
-import torch.nn as nn
 from rich import print
+from torch import nn
 
 from ..utils import KEY_B, KEY_E, LOSSES, MODELS, URL_B, URL_E, get_config, load_weights
 
@@ -32,24 +32,21 @@ class ClsExporter:
         self.cfg.model.weights = model_weights
         self.model = MODELS.create(self.cfg.model)
 
-        loss_cfg = self.cfg.loss
-        if loss_cfg.get("weights", False):
-            loss_cfg.pop("weights")
-            self.loss_fn = LOSSES.create(self.cfg.loss)
+        # Loss Function (Optional)
+        loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
+        if list(loss_fn.parameters()) != []:
             loss_weights = (
                 self.run_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             )
-            load_weights(self.loss_fn, loss_weights)
+            load_weights(loss_fn, loss_weights)
             self.model = nn.Sequential(
                 OrderedDict(
                     {
                         "model": self.model,
-                        "loss": self.loss_fn,
+                        "loss": loss_fn,
                     }
                 )
             )
-        else:
-            self.loss_fn = None
 
     def export_onnx(
         self,
@@ -71,15 +68,10 @@ class ClsExporter:
         if half:
             x = x.half()
             self.model.half()
-            if self.loss_fn is not None:
-                self.loss_fn.half()
 
         if device != "cpu":
-            torch.cuda.set_device(device)
             x = x.cuda()
             self.model.cuda()
-            if self.loss_fn is not None:
-                self.loss_fn.cuda()
 
         if onnx_file is None:
             f = self.cfg.model.weights.with_suffix(".onnx")

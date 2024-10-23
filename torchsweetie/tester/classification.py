@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from rich import print
 from sklearn.metrics import classification_report
+from torch import nn
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
@@ -28,25 +29,21 @@ class ClsTester:
             f"Running directory: {DIR_B}{self.run_dir}{DIR_E}:white_heavy_check_mark:"
         )
 
-        # self.best_or_last = best_or_last
-
         # Model
         model_weights = self.run_dir / weights
         self.cfg.model.weights = model_weights
         self.model = MODELS.create(self.cfg.model)
         self.model.cuda()
-        # self._load_weights(self.model, "model")
 
-        # Loss function (optional)
-        loss_cfg = self.cfg.loss
-        if loss_cfg.get("weights", False):
-            loss_cfg.pop("weights")
-            self.loss_fn = LOSSES.create(self.cfg.loss)
+        # Loss Function (Optional)
+        loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
+        if list(loss_fn.parameters()) != []:
             loss_weights = (
                 self.run_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             )
-            load_weights(self.loss_fn, loss_weights)
-            self.loss_fn.cuda()
+            load_weights(loss_fn, loss_weights)
+            loss_fn.cuda()
+            self.loss_fn = loss_fn
         else:
             self.loss_fn = None
 

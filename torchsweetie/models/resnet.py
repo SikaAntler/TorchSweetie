@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import Optional
 
-import torch.nn as nn
 from rich import print
+from torch import nn
 from torchvision.models import Weights, resnet, resnet152
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights

@@ -7,6 +7,7 @@ import pandas as pd
 import torch
 from accelerate import Accelerator
 from rich import print
+from torch import nn
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
@@ -67,15 +68,15 @@ class ClsTrainer:
 
         # Synchronize BN for DDP mode
         if self.cfg.train.get("sync_bn", False):
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
 
         # Loss Function
         loss_cfg = self.cfg.loss
-        if loss_cfg.get("weights", False):
-            self.loss_weights = loss_cfg.pop("weights")
+        loss_fn: nn.Module = LOSSES.create(loss_cfg)
+        if list(loss_fn.parameters()) != []:
+            self.loss_params = True
         else:
-            self.loss_weights = False
-        loss_fn = LOSSES.create(loss_cfg)
+            self.loss_params = False
 
         # Optimizer & LR Scheduler
         optimizer = OPTIMIZERS.create(model, self.cfg.optimizer)
@@ -90,7 +91,7 @@ class ClsTrainer:
         train_dataloader = create_cls_dataloader(self.cfg.train_dataloader)
         val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
 
-        # Prepare all
+        # Prepare All
         (
             self.model,
             self.loss_fn,
@@ -126,7 +127,7 @@ class ClsTrainer:
             self.save_last = self.cfg.save.get("last", True)
             self.save_best = self.cfg.save.get("best", False)
 
-        # Useful parameters
+        # Useful Parameters
         if self.accelerator.is_main_process:
             self.accuracy = 0
             self.avg_loss = None
@@ -233,7 +234,7 @@ class ClsTrainer:
         for images, labels in self.val_dataloader:
             images, labels = images.to(self.device), labels.to(self.device)
             outputs = self.model(images)
-            if self.loss_weights:
+            if self.loss_params:
                 outputs = self.loss_fn(outputs, labels)
 
             predicts = torch.argmax(outputs, dim=1)
@@ -282,7 +283,7 @@ class ClsTrainer:
         tqdm.write(f"Saved the {prefix} model: {model_file}")
 
         # Loss
-        if not self.loss_weights:
+        if not self.loss_params:
             return
         loss_fn = self.accelerator.unwrap_model(self.loss_fn)
         loss_file = self.run_dir / f"{prefix}-{self.epoch}-loss.pth"
