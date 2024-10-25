@@ -8,27 +8,36 @@ import torch
 from rich import print
 from torch import nn
 
-from ..utils import KEY_B, KEY_E, LOSSES, MODELS, URL_B, URL_E, get_config, load_weights
+from ..utils import (
+    DIR_B,
+    DIR_E,
+    KEY_B,
+    KEY_E,
+    LOSSES,
+    MODELS,
+    URL_B,
+    URL_E,
+    get_config,
+    load_weights,
+)
 
 
 class ClsExporter:
-    def __init__(
-        self, root_dir: str, cfg_file: str, run_dir: str, exp_dir: str, weights: str
-    ) -> None:
+    def __init__(self, cfg_file: str, run_dir: str, exp_dir: str, weights: str) -> None:
         # Get the root path (project path)
-        ROOT = Path(root_dir)
+        self.root_dir = Path.cwd()
 
         # Get the absolute path of config file and load it
-        self.cfg_file = ROOT / cfg_file
-        self.cfg = get_config(ROOT, self.cfg_file)
+        self.cfg_file = self.root_dir / cfg_file
+        self.cfg = get_config(self.root_dir, self.cfg_file)
 
         # Running directory, used to record results and models
-        self.run_dir = ROOT / run_dir / self.cfg_file.stem / exp_dir
-        assert self.run_dir.exists()
-        print(f"Running directory: {self.run_dir}:white_heavy_check_mark:")
+        self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / exp_dir
+        assert self.exp_dir.exists()
+        print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
         # Model
-        model_weights = self.run_dir / weights
+        model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
         self.model = MODELS.create(self.cfg.model)
 
@@ -36,7 +45,7 @@ class ClsExporter:
         loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
             loss_weights = (
-                self.run_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
+                self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             )
             load_weights(loss_fn, loss_weights)
             self.model = nn.Sequential(
@@ -76,7 +85,7 @@ class ClsExporter:
         if onnx_file is None:
             f = self.cfg.model.weights.with_suffix(".onnx")
         else:
-            f = self.run_dir / onnx_file
+            f = self.exp_dir / onnx_file
 
         input_name = "input"
         output_name = "output"

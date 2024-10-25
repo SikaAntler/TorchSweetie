@@ -1,16 +1,27 @@
 from argparse import ArgumentParser
+from pathlib import Path
 
 from torchsweetie.exporter import ClsExporter
 
 
 def main(cfg) -> None:
-    exporter = ClsExporter(
-        cfg.root_dir,
-        cfg.cfg_file,
-        cfg.run_dir,
-        cfg.exp_dir,
-        cfg.weights,
-    )
+    root_dir = Path.cwd()
+    cfg_file = root_dir / cfg.cfg_file
+    exp_dir = root_dir / cfg.run_dir / cfg_file.stem / cfg.exp_dir
+    assert exp_dir.exists()
+
+    if cfg.best:
+        weights = "best-*[0-9].pth"
+    elif cfg.last:
+        weights = "last-*[0-9].pth"
+    else:
+        weights = f"epoch-{cfg.epoch}.pth"
+    weights = list(exp_dir.glob(weights))
+    assert len(weights) == 1
+    weights = weights[0].name
+
+    exporter = ClsExporter(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+
     exporter.export_onnx(
         tuple(cfg.input_size),
         cfg.half,
@@ -24,13 +35,6 @@ def main(cfg) -> None:
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument(
-        "--root-dir",
-        "--root",
-        type=str,
-        required=True,
-        help="path of the roor directory",
-    )
     parser.add_argument(
         "--cfg-file",
         "--cfg",
@@ -52,9 +56,18 @@ if __name__ == "__main__":
         required=True,
         help="path of the experiment directory (relative e.g. YYYYmmdd-HHMMSS)",
     )
-    parser.add_argument(
-        "--weights", type=str, required=True, help="path of the weights (relative)"
+
+    group_weights = parser.add_mutually_exclusive_group()
+    group_weights.add_argument(
+        "--best", action="store_true", help="whether to load the best weights"
     )
+    group_weights.add_argument(
+        "--last", action="store_true", help="whether to load the last weights"
+    )
+    group_weights.add_argument(
+        "--epoch", type=int, help="which epoch of weights want to load"
+    )
+
     parser.add_argument(
         "--input-size",
         "--size",
@@ -66,7 +79,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--half",
         action="store_true",
-        required=True,
         help="the dtype for the input and model",
     )
     parser.add_argument(

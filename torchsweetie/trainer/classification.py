@@ -11,6 +11,7 @@ from torch import nn
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
+from ..tester import ClsTester
 from ..utils import (
     DIR_B,
     DIR_E,
@@ -27,13 +28,13 @@ from ..utils import (
 class ClsTrainer:
     NCOLS = 100
 
-    def __init__(self, root_dir: str, cfg_file: str, run_dir: str) -> None:
+    def __init__(self, cfg_file: str, run_dir: str) -> None:
         # Get the root path (project path)
-        ROOT = Path(root_dir)
+        self.root_dir = Path.cwd()
 
         # Get the absolute path of config file and load it
-        self.cfg_file = ROOT / cfg_file
-        self.cfg = get_config(ROOT, self.cfg_file)
+        self.cfg_file = self.root_dir / cfg_file
+        self.cfg = get_config(self.root_dir, self.cfg_file)
 
         # Accelerator
         split_batch = False
@@ -55,9 +56,9 @@ class ClsTrainer:
         # Only executed by the main process
         if self.accelerator.is_main_process:
             date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.run_dir = ROOT / run_dir / self.cfg_file.stem / date_time
-            self.run_dir.mkdir(parents=True)
-            print(f"Running directory: {DIR_B}{self.run_dir}{DIR_E}")
+            self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / date_time
+            self.exp_dir.mkdir(parents=True)
+            print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
         # Model
         model = MODELS.create(self.cfg.model)
@@ -257,7 +258,7 @@ class ClsTrainer:
         df = pd.DataFrame(
             self.results, columns=["Epoch", "Loss", "Accuracy"]  # pyright: ignore
         )
-        df.to_csv(self.run_dir / "record.csv", index=False)
+        df.to_csv(self.exp_dir / "record.csv", index=False)
 
         # Save the interval(epoch)
         if (self.epoch + 1) % self.save_interval == 0:
@@ -269,8 +270,8 @@ class ClsTrainer:
 
         # Save the best epoch
         if self.save_best and (self.accuracy > self.best_acc):
-            (self.run_dir / f"best-{self.best_epoch}.pth").unlink(missing_ok=True)
-            (self.run_dir / f"best-{self.best_epoch}-loss.pth").unlink(missing_ok=True)
+            (self.exp_dir / f"best-{self.best_epoch}.pth").unlink(missing_ok=True)
+            (self.exp_dir / f"best-{self.best_epoch}-loss.pth").unlink(missing_ok=True)
             self.best_acc = self.accuracy
             self.best_epoch = self.epoch
             self._save("best")
@@ -278,7 +279,7 @@ class ClsTrainer:
     def _save(self, prefix: Literal["epoch", "last", "best"]) -> None:
         # Model
         model = self.accelerator.unwrap_model(self.model)
-        model_file = self.run_dir / f"{prefix}-{self.epoch}.pth"
+        model_file = self.exp_dir / f"{prefix}-{self.epoch}.pth"
         torch.save(model.state_dict(), model_file)
         tqdm.write(f"Saved the {prefix} model: {model_file}")
 
@@ -286,6 +287,21 @@ class ClsTrainer:
         if not self.loss_params:
             return
         loss_fn = self.accelerator.unwrap_model(self.loss_fn)
-        loss_file = self.run_dir / f"{prefix}-{self.epoch}-loss.pth"
+        loss_file = self.exp_dir / f"{prefix}-{self.epoch}-loss.pth"
         torch.save(loss_fn.state_dict(), loss_file)
         tqdm.write(f"Saved the {prefix} loss fn: {loss_file}")
+
+    def test(
+        self, prefix: Literal["epoch", "last", "best"], digits: int, export: bool
+    ) -> None:
+        cfg_file = str(self.cfg_file.relative_to(self.root_dir))
+        run_dir = self.exp_dir.parent.parent.name
+        exp_dir = self.exp_dir.name
+
+        weights = list(self.exp_dir.glob(f"{prefix}-*[0-9].pth"))
+        assert len(weights) == 1
+        weights = weights[0].name
+
+        tester = ClsTester(cfg_file, run_dir, exp_dir, weights)
+        tester.test()
+        tester.report(digits, export)

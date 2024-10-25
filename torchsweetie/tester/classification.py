@@ -12,25 +12,21 @@ from ..utils import DIR_B, DIR_E, LOSSES, MODELS, URL_B, URL_E, get_config, load
 
 
 class ClsTester:
-    def __init__(
-        self, root_dir: str, cfg_file: str, run_dir: str, exp_dir: str, weights: str
-    ) -> None:
+    def __init__(self, cfg_file: str, run_dir: str, exp_dir: str, weights: str) -> None:
         # Get the root path (project path)
-        ROOT = Path(root_dir)
+        self.root_dir = Path.cwd()
 
         # Get the absolute path of config file and load it
-        self.cfg_file = ROOT / cfg_file
-        self.cfg = get_config(ROOT, self.cfg_file)
+        self.cfg_file = self.root_dir / cfg_file
+        self.cfg = get_config(self.root_dir, self.cfg_file)
 
         # Running directory, used to record results and models
-        self.run_dir = ROOT / run_dir / self.cfg_file.stem / exp_dir
-        assert self.run_dir.exists()
-        print(
-            f"Running directory: {DIR_B}{self.run_dir}{DIR_E}:white_heavy_check_mark:"
-        )
+        self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / exp_dir
+        assert self.exp_dir.exists()
+        print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
         # Model
-        model_weights = self.run_dir / weights
+        model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
         self.model = MODELS.create(self.cfg.model)
         self.model.cuda()
@@ -39,7 +35,7 @@ class ClsTester:
         loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
             loss_weights = (
-                self.run_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
+                self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             )
             load_weights(loss_fn, loss_weights)
             loss_fn.cuda()
@@ -76,7 +72,7 @@ class ClsTester:
 
         if export:
             df_report = pd.DataFrame(report)
-            filename = self.run_dir / "report.csv"
+            filename = self.exp_dir / "report.csv"
             df_report.to_csv(filename)
             print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
