@@ -13,7 +13,7 @@ __all__ = [
     "RandomVerticalFlip",
     "RandomTranspose",
     "RemainSize",
-    "ResizeLongSide",
+    "ResizePad",
     "RotateVertical",
     "ToTensor",
 ]
@@ -59,7 +59,7 @@ class RemainSize(nn.Module):
         else:
             self.pad_value = pad_value
 
-        self.resize = ResizeLongSide(img_size, pad_value)
+        self.resize = ResizePad(img_size, pad_value)
 
     def forward(self, image: Image.Image) -> Image.Image:
         width, height = image.size
@@ -79,7 +79,7 @@ class RemainSize(nn.Module):
 
 
 @TRANSFORMS.register()
-class ResizeLongSide(nn.Module):
+class ResizePad(nn.Module):
     def __init__(self, img_size: int | list[int], pad_value: list[int]) -> None:
         super().__init__()
 
@@ -124,6 +124,8 @@ class RotateVertical(nn.Module):
         direction: Literal["clockwise", "counterclockwise"] = "counterclockwise",
         resampling: Literal["nearest", "bilinear", "bicubic"] = "bilinear",
     ) -> None:
+        super().__init__()
+
         match direction:
             case "clockwise":
                 self.angle = -90

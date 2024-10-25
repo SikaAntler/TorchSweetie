@@ -20,7 +20,7 @@ class ClsDataset(Dataset):
 
         self.target_names = target_names
 
-        self.transform = T.Compose([TRANSFORMS.create(cfg) for cfg in transforms])
+        self.transforms = T.Compose([TRANSFORMS.create(cfg) for cfg in transforms])
 
     def __len__(self) -> int:
         return len(self.labels)
@@ -29,6 +29,6 @@ class ClsDataset(Dataset):
         image, label = self.images[idx], self.labels[idx]
 
         image = Image.open(image)
-        image = self.transform(image)
+        image = self.transforms(image)
 
         return image, label  # pyright: ignore
