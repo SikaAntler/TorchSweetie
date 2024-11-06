@@ -11,7 +11,6 @@ from torch import nn
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..tester import ClsTester
 from ..utils import (
     DIR_B,
     DIR_E,
@@ -48,7 +47,9 @@ class ClsTrainer:
         else:
             print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.accelerator = Accelerator(
-            split_batches=split_batch, mixed_precision=mixed_precision
+            split_batches=split_batch,
+            mixed_precision=mixed_precision,
+            step_scheduler_with_optimizer=False,  # 否则多卡时一次step等于num_processes次
         )
         self.device = self.accelerator.device
 
@@ -178,30 +179,27 @@ class ClsTrainer:
         )
 
         for images, labels in self.train_dataloader:
-            self.optimizer.zero_grad()
-
             images, labels = images.to(self.device), labels.to(self.device)
-            outputs = self.model(images)
 
             with self.accelerator.autocast():
+                outputs = self.model(images)
                 loss = self.loss_fn(outputs, labels)
+
             total_loss += loss.item()
             # self.loss_iters.append(loss.item())
             # TODO: gather or reduce for loss
 
             self.accelerator.backward(loss)
 
-            if self.accelerator.sync_gradients:
-                if self.clip_grad is not None:
-                    self.accelerator.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.max_norm,
-                        self.norm_type,
-                    )
-
-            self.accelerator.wait_for_everyone()
+            if self.clip_grad is not None:
+                self.accelerator.clip_grad_norm_(
+                    self.model.parameters(),
+                    self.max_norm,
+                    self.norm_type,
+                )
 
             self.optimizer.step()
+            self.optimizer.zero_grad()
 
             self.accelerator.wait_for_everyone()
 
@@ -239,12 +237,8 @@ class ClsTrainer:
                 outputs = self.loss_fn(outputs, labels)
 
             predicts = torch.argmax(outputs, dim=1)
-            corrects += (predicts == labels).sum().cpu().item()
-
-            # TODO: reduce or gather the metrics
-            # all_outputs, all_labels = self.accelerator.gather_for_metrics(
-            #     outputs, labels
-            # )
+            metrics = self.accelerator.gather_for_metrics(predicts == labels)
+            corrects += metrics.sum().cpu().item()  # pyright: ignore
 
             pbar_val.update()
 
@@ -290,18 +284,3 @@ class ClsTrainer:
         loss_file = self.exp_dir / f"{prefix}-{self.epoch}-loss.pth"
         torch.save(loss_fn.state_dict(), loss_file)
         tqdm.write(f"Saved the {prefix} loss fn: {loss_file}")
-
-    def test(
-        self, prefix: Literal["epoch", "last", "best"], digits: int, export: bool
-    ) -> None:
-        cfg_file = str(self.cfg_file.relative_to(self.root_dir))
-        run_dir = self.exp_dir.parent.parent.name
-        exp_dir = self.exp_dir.name
-
-        weights = list(self.exp_dir.glob(f"{prefix}-*[0-9].pth"))
-        assert len(weights) == 1
-        weights = weights[0].name
-
-        tester = ClsTester(cfg_file, run_dir, exp_dir, weights)
-        tester.test()
-        tester.report(digits, export)

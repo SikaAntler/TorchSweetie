@@ -142,8 +142,9 @@ class EffectiveNumberLoss(nn.Module):
         # reciprocal of the effective numbers
         weight = (1.0 - beta) / (1.0 - np.power(beta, dist))
         weight = weight / weight.sum()  # 原文代码中有 * len(dist)，不解
+        weight = FloatTensor(weight)
 
-        self.loss_fn = nn.CrossEntropyLoss(weight=FloatTensor(weight))
+        self.loss_fn = nn.CrossEntropyLoss(weight)
 
     def forward(self, logits: Tensor, labels: LongTensor):
         loss = self.loss_fn(logits, labels)
@@ -201,6 +202,7 @@ class NormalizedCenterLoss(nn.Module):
         bound = sqrt(1 / in_features)
         centers = torch.empty(num_classes, in_features)
         nn.init.uniform_(centers, -bound, bound)
+        # self.register_buffer("centers", centers)
         self.centers = nn.Parameter(centers)
 
         self.lambda_ = lambda_
@@ -213,9 +215,10 @@ class NormalizedCenterLoss(nn.Module):
         logits = self.fc(embeddings)  # (B, C)
 
         if self.training:
-            embeddings = F.normalize(embeddings.detach(), dim=1)
+            # embeddings = F.normalize(embeddings.detach(), dim=1)
+            embeddings = F.normalize(embeddings, dim=1)
 
-            centers = F.normalize(self.centers.detach(), dim=1)
+            centers = F.normalize(self.centers, dim=1)
             centers = centers[labels]
             center_loss = (embeddings - centers).square().sum(1).mean()
 
@@ -234,7 +237,8 @@ class ReWeightCELoss(nn.Module):
         dist = pd.read_csv(dist_file, header=None, index_col=None)[1].to_numpy()
         weight = 1 / dist
         weight /= weight.sum()
-        self.loss_fn = nn.CrossEntropyLoss(weight=FloatTensor(weight))
+        weight = FloatTensor(weight)
+        self.loss_fn = nn.CrossEntropyLoss(weight)
 
     def forward(self, logits: Tensor, labels: LongTensor):
         loss = self.loss_fn(logits, labels)

@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 
+from torchsweetie.tester import ClsTester
 from torchsweetie.trainer import ClsTrainer
 
 
@@ -8,7 +9,14 @@ def main(cfg) -> None:
 
     trainer.train()
 
+    if not trainer.accelerator.is_main_process:
+        return
+
     print("\n==================Train Finished, Starting Test==================\n")
+
+    cfg_file = str(trainer.cfg_file.relative_to(trainer.root_dir))
+    run_dir = trainer.exp_dir.parent.parent.name
+    exp_dir = trainer.exp_dir.name
 
     if cfg.best:
         prefix = "best"
@@ -16,8 +24,15 @@ def main(cfg) -> None:
         prefix = "last"
     else:
         prefix = "epoch"
+    weights = list(trainer.exp_dir.glob(f"{prefix}-*[0-9].pth"))
+    assert len(weights) == 1
+    weights = weights[0].name
 
-    trainer.test(prefix, cfg.digits, cfg.export)
+    tester = ClsTester(cfg_file, run_dir, exp_dir, weights)
+
+    tester.test()
+
+    tester.report(cfg.digits, cfg.export)
 
 
 if __name__ == "__main__":
