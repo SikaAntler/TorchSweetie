@@ -17,7 +17,7 @@ class CosineAnnealingLRWarmUp(LRScheduler):
         warmup: int = 0,
         eta_min: float = 0.0,
         last_epoch: int = -1,
-    ):
+    ) -> None:
         self.warmup = warmup
         self.eta_min = eta_min
         self.scheduler = CosineAnnealingLR(

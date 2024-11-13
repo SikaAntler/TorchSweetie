@@ -49,7 +49,7 @@ if __name__ == "__main__":
         "--exp",
         type=str,
         required=True,
-        help="path of the experiment directory (relative e.g. YYYYmmdd-HHMMSS)",
+        help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
     )
 
     group_weights = parser.add_mutually_exclusive_group()

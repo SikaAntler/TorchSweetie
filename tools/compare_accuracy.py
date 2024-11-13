@@ -6,29 +6,30 @@ from rich.console import Console
 
 
 def main(cfg) -> None:
-    ROOT = Path(cfg.root_dir)
+    ROOT = Path().cwd()
 
     console = Console()
 
     header = f"\n{'':>12}"
     classes = []
-    f1_scores_list = []
+    f1_score_list = []
     for i, exp_dir in enumerate(cfg.exp_list):
         exp_dir = ROOT / exp_dir
-        report_file = exp_dir / "report.csv"
-        report = pd.read_csv(report_file, header=None)
 
-        sub_name = exp_dir.name.split("-")[-1]
-        header += f"{sub_name:>12}"
+        exp_name = exp_dir.name.split("-")[-1]
+        header += f"{exp_name:>12}"
 
-        if i == 0:
-            classes = report.iloc[
-                0
-            ].tolist()  # NaN, ..., accuracy, macro avg, weighted avg
+        report = pd.read_csv(exp_dir / "report.csv", index_col=0).T
+
+        indices = report.index.to_list()
+        if classes == []:
+            classes = indices
         else:
-            assert classes == report.iloc[0].tolist()
-        f1_scores = report.iloc[3].tolist()
-        f1_scores_list.append(f1_scores)
+            assert len(classes) == len(indices)
+
+        f1_score = report["f1-score"].to_list()
+
+        f1_score_list.append(f1_score)
     header += "\n"
     console.print(header, highlight=False)
 
@@ -51,7 +52,7 @@ def main(cfg) -> None:
         # find the maximum f1 score
         f1_scores = []
         for j in range(len(cfg.exp_list)):
-            f1_scores.append(float(f1_scores_list[j][i]))
+            f1_scores.append(float(f1_score_list[j][i]))
         max_f1_score = max(f1_scores)
 
         string = f"{format_cls}"
@@ -65,20 +66,14 @@ def main(cfg) -> None:
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument(
-        "--root-dir",
-        "--root",
-        type=str,
-        required=True,
-        help="path of the root directory",
-    )
+
     parser.add_argument(
         "--exp-list",
         "--exp",
         nargs="+",
         type=str,
         required=True,
-        help="list of some experiment directories (relative e.g. YYYYmmdd-HHMMSS)",
+        help="list of some experimental directories (relative e.g. YYYYmmdd-HHMMSS)",
     )
 
     main(parser.parse_args())
