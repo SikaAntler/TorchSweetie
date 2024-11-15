@@ -5,12 +5,34 @@ import pandas as pd
 from rich.console import Console
 
 
+def is_chinese(c: str) -> bool:
+    assert len(c) == 1
+
+    if "\u4e00" <= c <= "\u9fa5":
+        return True
+    else:
+        return False
+
+
 def main(cfg) -> None:
     ROOT = Path().cwd()
 
     console = Console()
 
-    header = f"\n{'':>12}"
+    # 计算最长类名
+    report = pd.read_csv(ROOT / cfg.exp_list[0] / "report.csv", index_col=0)
+    report = report.to_dict()
+    W = 0
+    for key in report.keys():
+        length = 0
+        for c in key:
+            if is_chinese(c):
+                length += 2
+            else:
+                length += 1
+        W = max(W, length)
+
+    header = f"\n{'':>{W}}"
     classes = []
     f1_score_list = []
     for i, exp_dir in enumerate(cfg.exp_list):
@@ -36,13 +58,13 @@ def main(cfg) -> None:
     for i in range(1, len(classes)):
         length = 0
         for c in classes[i]:
-            if "\u4e00" <= c <= "\u9fa5":
+            if is_chinese(c):
                 length += 2
             else:
                 length += 1
 
         format_cls = classes[i]
-        while length < 12:
+        while length < W:
             format_cls = " " + format_cls
             length += 1
 

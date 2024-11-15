@@ -111,21 +111,41 @@ class ClsTester:
 
         pbar.close()
 
+    @staticmethod
+    def _is_chinese(c: str) -> bool:
+        assert len(c) == 1
+
+        if "\u4e00" <= c <= "\u9fa5":
+            return True
+        else:
+            return False
+
     def _print_report(self, report: dict) -> None:
+        # 计算最长类名
+        W = 0
+        for key in report.keys():
+            length = 0
+            for c in key:
+                if self._is_chinese(c):
+                    length += 2
+                else:
+                    length += 1
+            W = max(W, length)
+
         print(
-            f"\n{'':>12}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
+            f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
         )
 
         for key, value in report.items():
             length = 0
             for c in key:
-                if "\u4e00" <= c <= "\u9fa5":
+                if self._is_chinese(c):
                     length += 2
                 else:
                     length += 1
 
             format_key = key
-            while length < 12:
+            while length < W:
                 format_key = " " + format_key
                 length += 1
 

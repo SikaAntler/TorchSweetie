@@ -5,26 +5,46 @@ import pandas as pd
 from rich import print
 
 
+def is_chinese(c: str) -> bool:
+    assert len(c) == 1
+
+    if "\u4e00" <= c <= "\u9fa5":
+        return True
+    else:
+        return False
+
+
 def main(cfg) -> None:
     ROOT = Path().cwd()
 
     report = pd.read_csv(ROOT / cfg.exp_name / "report.csv", index_col=0)
     report = report.to_dict()
 
+    # 计算最长类名
+    W = 0
+    for key in report.keys():
+        length = 0
+        for c in key:
+            if is_chinese(c):
+                length += 2
+            else:
+                length += 1
+        W = max(W, length)
+
     print(
-        f"\n{'':>12}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
+        f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
     )
 
     for key, value in report.items():
         length = 0
         for c in key:
-            if "\u4e00" <= c <= "\u9fa5":
+            if is_chinese(c):
                 length += 2
             else:
                 length += 1
 
         format_key = key
-        while length < 12:
+        while length < W:
             format_key = " " + format_key
             length += 1
 
