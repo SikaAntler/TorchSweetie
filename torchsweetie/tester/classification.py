@@ -68,7 +68,7 @@ class ClsTester:
             zero_division=0.0,  # pyright: ignore
         )
 
-        self._print_report(report)
+        self._print_report(report, digits)
 
         if export:
             df_report = pd.DataFrame(report)
@@ -111,6 +111,33 @@ class ClsTester:
 
         pbar.close()
 
+    def _print_report(self, report: dict, digits: int) -> None:
+        # 计算最长类名
+        W = 0
+        for key in report.keys():
+            length = self._display_len(key)
+            W = max(W, length)
+
+        print(
+            f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
+        )
+
+        D = digits
+
+        for key, value in report.items():
+            class_name = self._format_string(key, W)
+
+            if key == "accuracy":
+                print(f"\n{class_name}{'':>12}{'':>12}{value:>12.{digits}f}{'':>12}")
+            else:
+                precision = value["precision"]
+                recall = value["recall"]
+                f1_score = value["f1-score"]
+                support = value["support"]
+                print(
+                    f"{class_name}{precision:>12.{D}f}{recall:>12.{D}f}{f1_score:12.{D}f}{support:>12}"
+                )
+
     @staticmethod
     def _is_chinese(c: str) -> bool:
         assert len(c) == 1
@@ -120,42 +147,21 @@ class ClsTester:
         else:
             return False
 
-    def _print_report(self, report: dict) -> None:
-        # 计算最长类名
-        W = 0
-        for key in report.keys():
-            length = 0
-            for c in key:
-                if self._is_chinese(c):
-                    length += 2
-                else:
-                    length += 1
-            W = max(W, length)
-
-        print(
-            f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
-        )
-
-        for key, value in report.items():
-            length = 0
-            for c in key:
-                if self._is_chinese(c):
-                    length += 2
-                else:
-                    length += 1
-
-            format_key = key
-            while length < W:
-                format_key = " " + format_key
+    def _display_len(self, string: str) -> int:
+        length = 0
+        for c in string:
+            if self._is_chinese(c):
+                length += 2
+            else:
                 length += 1
 
-            if key == "accuracy":
-                print(f"\n{format_key}{'':>12}{'':>12}{value:>12.3f}{'':>12}")
-            else:
-                precision = value["precision"]
-                recall = value["recall"]
-                f1_score = value["f1-score"]
-                support = value["support"]
-                print(
-                    f"{format_key}{precision:>12.3f}{recall:>12.3f}{f1_score:12.3f}{support:>12}"
-                )
+        return length
+
+    def _format_string(self, string: str, max_length: int) -> str:
+        length = self._display_len(string)
+
+        while length < max_length:
+            string = " " + string
+            length += 1
+
+        return string

@@ -2,19 +2,20 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 import pandas as pd
+from _utils import display_len, format_string
 from rich.console import Console
 
 
-def is_chinese(c: str) -> bool:
-    assert len(c) == 1
-
-    if "\u4e00" <= c <= "\u9fa5":
-        return True
-    else:
-        return False
-
-
 def main(cfg) -> None:
+    # 计算最长别名
+    N = 12
+    if cfg.alias_list is not None:
+        assert len(cfg.exp_list) == len(cfg.alias_list), "别名必须与实验对应"
+        for alias in cfg.alias_list:
+            length = display_len(alias)
+            N = max(N, length)
+        N = N + 2 if N >= 12 else N
+
     ROOT = Path().cwd()
 
     console = Console()
@@ -24,12 +25,7 @@ def main(cfg) -> None:
     report = report.to_dict()
     W = 0
     for key in report.keys():
-        length = 0
-        for c in key:
-            if is_chinese(c):
-                length += 2
-            else:
-                length += 1
+        length = display_len(key)
         W = max(W, length)
 
     header = f"\n{'':>{W}}"
@@ -38,8 +34,12 @@ def main(cfg) -> None:
     for i, exp_dir in enumerate(cfg.exp_list):
         exp_dir = ROOT / exp_dir
 
-        exp_name = exp_dir.name.split("-")[-1]
-        header += f"{exp_name:>12}"
+        if cfg.alias_list is None:
+            exp_name = exp_dir.name.split("-")[-1]
+        else:
+            exp_name = cfg.alias_list[i]
+
+        header += format_string(exp_name, N)
 
         report = pd.read_csv(exp_dir / "report.csv", index_col=0).T
 
@@ -47,7 +47,7 @@ def main(cfg) -> None:
         if classes == []:
             classes = indices
         else:
-            assert len(classes) == len(indices)
+            assert len(classes) == len(indices), "实验类名必须相同！"
 
         f1_score = report["f1-score"].to_list()
 
@@ -55,21 +55,13 @@ def main(cfg) -> None:
     header += "\n"
     console.print(header, highlight=False)
 
-    for i in range(1, len(classes)):
-        length = 0
-        for c in classes[i]:
-            if is_chinese(c):
-                length += 2
-            else:
-                length += 1
+    D = cfg.digits
 
-        format_cls = classes[i]
-        while length < W:
-            format_cls = " " + format_cls
-            length += 1
+    for i in range(1, len(classes)):
+        class_name = format_string(classes[i], W)
 
         if classes[i] == "accuracy":
-            format_cls = "\n" + format_cls
+            class_name = "\n" + class_name
 
         # find the maximum f1 score
         f1_scores = []
@@ -77,12 +69,12 @@ def main(cfg) -> None:
             f1_scores.append(float(f1_score_list[j][i]))
         max_f1_score = max(f1_scores)
 
-        string = f"{format_cls}"
+        string = f"{class_name}"
         for f1_score in f1_scores:
             if f1_score == max_f1_score:
-                string += f"[red]{f1_score:>12.3f}[/red]"
+                string += f"[red]{f1_score:>{N}.{D}f}[/red]"
             else:
-                string += f"{f1_score:>12.3f}"
+                string += f"{f1_score:>{N}.{D}f}"
         console.print(string, highlight=False)
 
 
@@ -96,6 +88,16 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="list of some experimental directories (relative e.g. YYYYmmdd-HHMMSS)",
+    )
+    parser.add_argument(
+        "--alias-list",
+        "--alias",
+        nargs="+",
+        type=str,
+        help="list of some aliases for experimental directories",
+    )
+    parser.add_argument(
+        "--digits", default=3, type=int, help="digits remain for accuracy"
     )
 
     main(parser.parse_args())
