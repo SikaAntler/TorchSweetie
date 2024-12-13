@@ -6,13 +6,12 @@ from torchsweetie.trainer import ClsTrainer
 
 def main(cfg) -> None:
     trainer = ClsTrainer(cfg.cfg_file, cfg.run_dir)
-
     trainer.train()
 
     if not trainer.accelerator.is_main_process:
         return
 
-    print("\n==================Train Finished, Starting Test==================\n")
+    print("\n==================Train Finished==================\n")
 
     cfg_file = str(trainer.cfg_file.relative_to(trainer.root_dir))
     run_dir = trainer.exp_dir.parent.parent.name
@@ -28,11 +27,12 @@ def main(cfg) -> None:
     assert len(weights) == 1
     weights = weights[0].name
 
-    tester = ClsTester(cfg_file, run_dir, exp_dir, weights)
+    if cfg.test:
+        print(f"\n==================Starting Test==================\n")
 
-    tester.test()
-
-    tester.report(cfg.digits, cfg.export)
+        tester = ClsTester(cfg_file, run_dir, exp_dir, weights)
+        tester.test()
+        tester.report(cfg.digits, cfg.export)
 
 
 if __name__ == "__main__":
@@ -68,11 +68,12 @@ if __name__ == "__main__":
         "--epoch", type=int, help="which epoch of weights want to load when test"
     )
 
+    parser.add_argument("--test", action="store_true", help="whether to test")
     parser.add_argument(
         "--digits",
         default=3,
         type=int,
-        help="digits remain for accuracy when test",
+        help="digits remain for accuracy when print report after test",
     )
     parser.add_argument(
         "--export", action="store_true", help="whether to export the report after test"

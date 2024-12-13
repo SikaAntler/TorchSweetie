@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 import torch
@@ -12,6 +13,8 @@ from ..utils import DIR_B, DIR_E, LOSSES, MODELS, URL_B, URL_E, get_config, load
 
 
 class ClsTester:
+    NCOLS = 100
+
     def __init__(self, cfg_file: str, run_dir: str, exp_dir: str, weights: str) -> None:
         # Get the root path (project path)
         self.root_dir = Path.cwd()
@@ -55,9 +58,6 @@ class ClsTester:
         self.y_true = []
         self.y_pred = []
 
-        # Store the embeddings output by model
-        self.embeddings = []
-
     def report(self, digits: int = 3, export: bool = False) -> None:
         report: dict = classification_report(
             self.y_true,
@@ -77,8 +77,8 @@ class ClsTester:
             print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
     @torch.no_grad()
-    def test(self, store_embeddings: bool = False) -> None:
-        pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=80)
+    def test(self) -> None:
+        pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=self.NCOLS)
 
         if len(self.y_true) + len(self.y_pred) != 0:
             tqdm.write(
@@ -89,7 +89,6 @@ class ClsTester:
         if self.loss_fn is not None:
             self.loss_fn.eval()
 
-        embeddings = []
         for images, labels in self.dataloader:
             self.y_true.extend(labels.tolist())
             images, labels = images.cuda(), labels.cuda()
@@ -98,16 +97,10 @@ class ClsTester:
             if self.loss_fn is not None:
                 outputs = self.loss_fn(outputs, labels)  # pyright: ignore
 
-            if store_embeddings:
-                embeddings.append(outputs)
-
             predicts = torch.argmax(outputs, dim=1)
             self.y_pred.extend(predicts.tolist())
 
             pbar.update()
-
-        if store_embeddings:
-            self.embeddings = torch.concat(embeddings)
 
         pbar.close()
 

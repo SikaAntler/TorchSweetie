@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.tester import ClsTester
+from torchsweetie.exporter import RetrievalExporter
+from torchsweetie.tester import RetrievalTester
 
 
 def main(cfg) -> None:
@@ -20,9 +21,15 @@ def main(cfg) -> None:
     assert len(weights) == 1
     weights = weights[0].name
 
-    tester = ClsTester(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+    exporter = RetrievalExporter(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+
+    exporter.export()
+
+    tester = RetrievalTester(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+
     tester.test()
-    tester.report(cfg.digits, cfg.export)
+
+    tester.report(exporter.embeddings, exporter.labels, cfg.topk_list, cfg.digits)
 
 
 if __name__ == "__main__":
@@ -62,10 +69,13 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "--digits", default=3, type=int, help="digits remain for accuracy"
+        "--topk-list", "--topk", nargs="+", type=int, help="the list of k in topk"
     )
     parser.add_argument(
-        "--export", action="store_true", help="whether to export the report"
+        "--digits", default=3, type=int, help="digits remain for accuracy"
     )
+    # parser.add_argument(
+    #     "--export", action="store_true", help="whether to export the report"
+    # )
 
     main(parser.parse_args())
