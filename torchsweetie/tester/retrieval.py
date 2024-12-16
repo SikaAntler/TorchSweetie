@@ -7,7 +7,7 @@ from torch import Tensor
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..utils import DIR_B, DIR_E, MODELS, get_config
+from ..utils import DIR_B, DIR_E, MODELS, SIMILARITY, get_config
 
 
 class RetrievalTester:
@@ -42,6 +42,8 @@ class RetrievalTester:
         target_names = dataloader_cfg.dataset.target_names
         self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
 
+        self.similarity_fn = SIMILARITY.create(self.cfg.similarity)
+
         # Store the embeddings output by model
         self.embeddings: Tensor
         self.labels: Tensor
@@ -59,9 +61,7 @@ class RetrievalTester:
             labels_list.append(labels)
             images, labels = images.cuda(), labels.cuda()
             outputs = self.model(images)  # (B, N)
-
-            embeddings = outputs / outputs.norm(2, 1, True)
-            embeddings_list.append(embeddings)
+            embeddings_list.append(outputs)
 
             pbar.update()
 
@@ -74,22 +74,10 @@ class RetrievalTester:
     def report(
         self, embeddings: Tensor, labels: Tensor, topk_list: list[int], digits: int
     ) -> None:
-        # (B, N) @ (N, R) -> (B, R) -> (B, K)
-        similarity = self.embeddings @ embeddings.T
+        # (B, N) & (N, R) -> (B, R) -> (B, K)
+        similarity = self.similarity_fn(self.embeddings, embeddings)
         _, indices = similarity.topk(max(topk_list), 1)
         indices = indices.cpu()
-
-        recall_metrics = {}
-        for name in self.target_names:
-            recall_metrics[name] = []
-
-        # (B, K) == (B, 1) -> (B, K), where K is like [True, False, ...]
-        recall = labels[indices] == self.labels[:, None]
-        for i in range(len(self.labels)):
-            name = self.target_names[self.labels[i]]
-            for k in topk_list:
-                # recall_metrics[name].append(True in recall[i, 1 : k + 1])
-                recall_metrics[name].append(True in recall[i, :k])
 
         # 计算最长类名
         W = 0
@@ -106,21 +94,34 @@ class RetrievalTester:
 
         D = digits
 
-        average_k = {k: [] for k in topk_list}
+        recall_metrics = {}
+        for name in self.target_names:
+            recall_metrics[name] = {}
+            for k in topk_list:
+                recall_metrics[name][k] = []
+
+        # (B, K) == (B, 1) -> (B, K), where K is like [True, False, ...]
+        recall = labels[indices] == self.labels[:, None]
+        for i in range(len(self.labels)):
+            name = self.target_names[self.labels[i]]
+            for k in topk_list:
+                recall_metrics[name][k].append(True in recall[i, :k])
+
+        micro_avg = {k: [] for k in topk_list}
 
         for name in self.target_names:
             line = self._format_string(name, W)
             recall = recall_metrics[name]
             for k in topk_list:
-                recall_k = recall[:k]
+                recall_k = recall[k]
                 recall_k = sum(recall_k) / len(recall_k)
-                average_k[k].append(recall_k)
+                micro_avg[k].append(recall_k)
                 line += f"{recall_k:>12.{D}f}"
             print(line)
 
         line = f"\n{'average':>{W}}"
         for k in topk_list:
-            average = sum(average_k[k]) / len(average_k[k])
+            average = sum(micro_avg[k]) / len(micro_avg[k])
             line += f"{average:>12.{D}f}"
         print(line)
 

@@ -1,4 +1,4 @@
-from . import exporter, losses, models, optim, tester, trainer, utils
+from . import exporter, losses, models, optim, retrieval, tester, trainer, utils
 
 __version__ = "0.1.0"
 
@@ -8,6 +8,7 @@ __all__ = [
     "losses",
     "models",
     "optim",
+    "retrieval",
     "tester",
     "trainer",
     "utils",

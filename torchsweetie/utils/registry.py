@@ -55,6 +55,7 @@ class Registry:
 BATCH_SAMPLERS = Registry("sampler")
 LOSSES = Registry("loss")
 MODELS = Registry("model")
+SIMILARITY = Registry("similarity")
 TRANSFORMS = Registry("transform")
 UTILS = Registry("utils")
 

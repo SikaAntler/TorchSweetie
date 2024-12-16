@@ -57,11 +57,9 @@ class RetrievalExporter:
         for images, labels in self.dataloader:
             labels_list.append(labels)
             images, labels = images.cuda(), labels.cuda()
-            outputs = self.model(images)
-
             # outputs: (R, N), where R represents the number of Retrieval images
-            embeddings = outputs / outputs.norm(2, 1, True)
-            embeddings_list.append(embeddings)
+            outputs = self.model(images)
+            embeddings_list.append(outputs)
 
             pbar.update()
 
