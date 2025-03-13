@@ -18,9 +18,7 @@ def adamW(model: nn.Module | list[nn.Module], lr: float, weight_decay: float):
 
 
 @OPTIMIZERS.register("SGD")
-def sgd(
-    model: nn.Module | list[nn.Module], lr: float, momentum: float, weight_decay: float
-):
+def sgd(model: nn.Module | list[nn.Module], lr: float, momentum: float, weight_decay: float):
     params = _set_weight_decay(model, weight_decay)
 
     # if loss_fn is not None:

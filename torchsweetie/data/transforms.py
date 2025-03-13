@@ -66,9 +66,7 @@ class RemainSize(nn.Module):
         img_w, img_h = self.img_size
 
         if width <= img_w and height <= img_h:
-            new_img = Image.new(
-                image.mode, (img_w, img_h), self.pad_value  # pyright: ignore
-            )
+            new_img = Image.new(image.mode, (img_w, img_h), self.pad_value)  # pyright: ignore
             left = (img_w - width) // 2
             top = (img_h - height) // 2
             new_img.paste(image, (left, top))
@@ -97,9 +95,7 @@ class ResizePad(nn.Module):
         width, height = image.size
         img_w, img_h = self.img_size
 
-        new_img = Image.new(
-            image.mode, (img_w, img_h), self.pad_value  # pyright: ignore
-        )
+        new_img = Image.new(image.mode, (img_w, img_h), self.pad_value)  # pyright: ignore
 
         ratio_w = img_w / width
         ratio_h = img_h / height

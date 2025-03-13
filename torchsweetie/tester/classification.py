@@ -37,9 +37,7 @@ class ClsTester:
         # Loss Function (Optional)
         loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
-            loss_weights = (
-                self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
-            )
+            loss_weights = self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             load_weights(loss_fn, loss_weights)
             loss_fn.cuda()
             self.loss_fn = loss_fn
@@ -81,9 +79,7 @@ class ClsTester:
         pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=self.NCOLS)
 
         if len(self.y_true) + len(self.y_pred) != 0:
-            tqdm.write(
-                f"You may run the test twice, since y_true and y_pred are not empty."
-            )
+            tqdm.write(f"You may run the test twice, since y_true and y_pred are not empty.")
 
         self.model.eval()
         if self.loss_fn is not None:
@@ -111,9 +107,7 @@ class ClsTester:
             length = self._display_len(key)
             W = max(W, length)
 
-        print(
-            f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
-        )
+        print(f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n")
 
         D = digits
 

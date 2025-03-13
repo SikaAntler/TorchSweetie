@@ -100,9 +100,7 @@ class ClsTrainer:
             self.optimizer,
             self.train_dataloader,
             self.val_dataloader,
-        ) = self.accelerator.prepare(
-            model, loss_fn, optimizer, train_dataloader, val_dataloader
-        )
+        ) = self.accelerator.prepare(model, loss_fn, optimizer, train_dataloader, val_dataloader)
 
         # Train
         self.num_epochs = self.cfg.train.num_epochs
@@ -249,9 +247,7 @@ class ClsTrainer:
 
     def _record(self) -> None:
         self.results.append((self.epoch, self.avg_loss, self.accuracy))
-        df = pd.DataFrame(
-            self.results, columns=["Epoch", "Loss", "Accuracy"]  # pyright: ignore
-        )
+        df = pd.DataFrame(self.results, columns=["Epoch", "Loss", "Accuracy"])  # pyright: ignore
         df.to_csv(self.exp_dir / "record.csv", index=False)
 
         # Save the interval(epoch)

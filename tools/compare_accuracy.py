@@ -96,8 +96,6 @@ if __name__ == "__main__":
         type=str,
         help="list of some aliases for experimental directories",
     )
-    parser.add_argument(
-        "--digits", default=3, type=int, help="digits remain for accuracy"
-    )
+    parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
 
     main(parser.parse_args())

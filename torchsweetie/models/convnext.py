@@ -77,9 +77,7 @@ def convnext_tiny(num_classes: int, weights: Optional[str | Path] = None) -> Con
 
 
 @MODELS.register()
-def convnext_tiny_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> ConvNeXt:
+def convnext_tiny_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
     return _init_model("tiny", num_classes, weights, True)
 
 
@@ -89,9 +87,7 @@ def convnext_small(num_classes: int, weights: Optional[str | Path] = None) -> Co
 
 
 @MODELS.register()
-def convnext_small_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> ConvNeXt:
+def convnext_small_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
     return _init_model("small", num_classes, weights, True)
 
 
@@ -101,9 +97,7 @@ def convnext_base(num_classes: int, weights: Optional[str | Path] = None) -> Con
 
 
 @MODELS.register()
-def convnext_base_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> ConvNeXt:
+def convnext_base_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
     return _init_model("base", num_classes, weights, True)
 
 
@@ -113,7 +107,5 @@ def convnext_large(num_classes: int, weights: Optional[str | Path] = None) -> Co
 
 
 @MODELS.register()
-def convnext_large_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> ConvNeXt:
+def convnext_large_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
     return _init_model("large", num_classes, weights, True)

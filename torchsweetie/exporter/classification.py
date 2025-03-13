@@ -44,9 +44,7 @@ class ClsExporter:
         # Loss Function (Optional)
         loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
-            loss_weights = (
-                self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
-            )
+            loss_weights = self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             load_weights(loss_fn, loss_weights)
             self.model = nn.Sequential(
                 OrderedDict(

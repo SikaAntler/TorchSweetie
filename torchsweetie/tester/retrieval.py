@@ -71,9 +71,7 @@ class RetrievalTester:
         self.labels = torch.concat(labels_list)
 
     @torch.no_grad()
-    def report(
-        self, embeddings: Tensor, labels: Tensor, topk_list: list[int], digits: int
-    ) -> None:
+    def report(self, embeddings: Tensor, labels: Tensor, topk_list: list[int], digits: int) -> None:
         # (B, N) & (N, R) -> (B, R) -> (B, K)
         similarity = self.similarity_fn(self.embeddings, embeddings)
         _, indices = similarity.topk(max(topk_list), 1)

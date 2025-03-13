@@ -8,9 +8,7 @@ from torch import nn
 from .color import URL_B, URL_E
 
 
-def load_weights(
-    module: nn.Module, filename: Union[Path, str], rm_ddp=False, strict=False
-) -> None:
+def load_weights(module: nn.Module, filename: Union[Path, str], rm_ddp=False, strict=False) -> None:
     print(f"Loading weights from: {URL_B}{filename}{URL_E}")
     weights = torch.load(filename, map_location="cpu")
 

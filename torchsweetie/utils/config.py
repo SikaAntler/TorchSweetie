@@ -4,9 +4,7 @@ import yaml
 from omegaconf import DictConfig, OmegaConf
 
 
-def get_config(
-    root_dir: Path, cfg_file: Path | str, inherit_keyword: str = "base"
-) -> DictConfig:
+def get_config(root_dir: Path, cfg_file: Path | str, inherit_keyword: str = "base") -> DictConfig:
     if isinstance(cfg_file, str):
         cfg_file = Path(cfg_file)
 

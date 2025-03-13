@@ -9,9 +9,7 @@ from ..utils import TRANSFORMS
 
 
 class ClsDataset(Dataset):
-    def __init__(
-        self, csv_file: str, target_names: str, transforms: list[DictConfig]
-    ) -> None:
+    def __init__(self, csv_file: str, target_names: str, transforms: list[DictConfig]) -> None:
         super().__init__()
 
         dataset = pd.read_csv(csv_file, header=None)

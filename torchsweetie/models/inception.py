@@ -54,7 +54,5 @@ def inception_v3(num_classes: int, weights: Optional[str | Path] = None) -> Ince
 
 
 @MODELS.register()
-def inception_v3_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> Inception3:
+def inception_v3_fe(num_classes: int, weights: Optional[str | Path] = None) -> Inception3:
     return _init_inception("inception_v3", num_classes, weights, True)

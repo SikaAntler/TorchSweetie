@@ -57,15 +57,9 @@ if __name__ == "__main__":
     group_weights.add_argument(
         "--last", action="store_true", help="whether to load the last weights"
     )
-    group_weights.add_argument(
-        "--epoch", type=int, help="which epoch of weights want to load"
-    )
+    group_weights.add_argument("--epoch", type=int, help="which epoch of weights want to load")
 
-    parser.add_argument(
-        "--digits", default=3, type=int, help="digits remain for accuracy"
-    )
-    parser.add_argument(
-        "--export", action="store_true", help="whether to export the report"
-    )
+    parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
+    parser.add_argument("--export", action="store_true", help="whether to export the report")
 
     main(parser.parse_args())

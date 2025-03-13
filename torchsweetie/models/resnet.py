@@ -159,9 +159,7 @@ def resnet18(num_classes: int, weights: Optional[str | Path] = None) -> nn.Modul
 
 
 @MODELS.register()
-def resnet18_fe(
-    num_classes: int, remap=None, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnet18_fe(num_classes: int, remap=None, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnet18", num_classes, weights, True, remap)
 
 
@@ -171,9 +169,7 @@ def resnet34(num_classes: int, weights: Optional[str | Path] = None) -> nn.Modul
 
 
 @MODELS.register()
-def resnet34_fe(
-    num_classes: int, remap=None, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnet34_fe(num_classes: int, remap=None, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnet34", num_classes, weights, True, remap)
 
 
@@ -183,9 +179,7 @@ def resnet50(num_classes: int, weights: Optional[str | Path] = None) -> nn.Modul
 
 
 @MODELS.register()
-def resnet50_fe(
-    num_classes: int, remap=None, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnet50_fe(num_classes: int, remap=None, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnet50", num_classes, weights, True, remap)
 
 
@@ -195,9 +189,7 @@ def resnet101(num_classes: int, weights=None) -> nn.Module:
 
 
 @MODELS.register()
-def resnet101_fe(
-    num_classes: int, remap=None, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnet101_fe(num_classes: int, remap=None, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnet101", num_classes, weights, True, remap)
 
 
@@ -207,16 +199,12 @@ def resnet152(num_classes: int, weights: Optional[str | Path] = None) -> nn.Modu
 
 
 @MODELS.register()
-def resnet152_fe(
-    num_classes: int, remap=None, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnet152_fe(num_classes: int, remap=None, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnet152e", num_classes, weights, True, remap)
 
 
 @MODELS.register()
-def resnext50_32x4d(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnext50_32x4d(num_classes: int, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnext50_32x4d", num_classes, weights)
 
 
@@ -228,9 +216,7 @@ def resnext50_32x4d_fe(
 
 
 @MODELS.register()
-def resnext101_32x8d(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnext101_32x8d(num_classes: int, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnext101_32x8d", num_classes, weights)
 
 
@@ -242,9 +228,7 @@ def resnext101_32x8d_fe(
 
 
 @MODELS.register()
-def resnext101_64x4d(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> nn.Module:
+def resnext101_64x4d(num_classes: int, weights: Optional[str | Path] = None) -> nn.Module:
     return _init_model("resnext101_64x4d", num_classes, weights)
 
 

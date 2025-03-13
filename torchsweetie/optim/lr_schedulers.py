@@ -20,9 +20,7 @@ class CosineAnnealingLRWarmUp(LRScheduler):
     ) -> None:
         self.warmup = warmup
         self.eta_min = eta_min
-        self.scheduler = CosineAnnealingLR(
-            optimizer, num_epochs - warmup, eta_min, last_epoch
-        )
+        self.scheduler = CosineAnnealingLR(optimizer, num_epochs - warmup, eta_min, last_epoch)
         super().__init__(optimizer, last_epoch)
 
     def step(self, epoch=None) -> None:

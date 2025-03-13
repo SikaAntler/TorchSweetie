@@ -99,13 +99,9 @@ class ClassBalancedBatchSampler(Sampler[list[int]]):
             yield self._sample_batch()
 
     def _sample_batch(self):
-        sampled_classes = np.random.choice(
-            self.num_classes, self.num_sample_classes, replace=False
-        )
+        sampled_classes = np.random.choice(self.num_classes, self.num_sample_classes, replace=False)
         sampled_indices = []
         for cls in sampled_classes:
-            indices = np.random.choice(
-                self.labels[cls], self.samples_per_class, replace=True
-            )
+            indices = np.random.choice(self.labels[cls], self.samples_per_class, replace=True)
             sampled_indices.extend(indices)
         return sampled_indices

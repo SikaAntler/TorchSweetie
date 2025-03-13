@@ -18,9 +18,7 @@ def main(cfg) -> None:
         length = display_len(key)
         W = max(W, length)
 
-    print(
-        f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n"
-    )
+    print(f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n")
 
     D = cfg.digits
 
@@ -50,8 +48,6 @@ if __name__ == "__main__":
         required=True,
         help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
     )
-    parser.add_argument(
-        "--digits", default=3, type=int, help="digits remain for accuracy"
-    )
+    parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
 
     main(parser.parse_args())

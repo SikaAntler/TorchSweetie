@@ -70,28 +70,20 @@ def _init_model(
 
 
 @MODELS.register()
-def vgg16(
-    num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5
-) -> VGG:
+def vgg16(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
     return _init_model("vgg16", num_classes, weights, dropout)
 
 
 @MODELS.register()
-def vgg16_fe(
-    num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5
-) -> VGG:
+def vgg16_fe(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
     return _init_model("vgg16", num_classes, weights, dropout, True)
 
 
 @MODELS.register()
-def vgg19(
-    num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5
-) -> VGG:
+def vgg19(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
     return _init_model("vgg19", num_classes, weights, dropout)
 
 
 @MODELS.register()
-def vgg19_fe(
-    num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5
-) -> VGG:
+def vgg19_fe(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
     return _init_model("vgg19", num_classes, weights, dropout, True)

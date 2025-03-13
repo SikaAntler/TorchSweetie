@@ -69,42 +69,30 @@ def _init_model(
 
 
 @MODELS.register()
-def efficientnet_v2_s(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> EfficientNet:
+def efficientnet_v2_s(num_classes: int, weights: Optional[str | Path] = None) -> EfficientNet:
     return _init_model("s", num_classes, 0.2, weights)
 
 
 @MODELS.register()
-def efficientnet_v2_s_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> EfficientNet:
+def efficientnet_v2_s_fe(num_classes: int, weights: Optional[str | Path] = None) -> EfficientNet:
     return _init_model("s", num_classes, 0.2, weights, True)
 
 
 @MODELS.register()
-def efficientnet_v2_m(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> EfficientNet:
+def efficientnet_v2_m(num_classes: int, weights: Optional[str | Path] = None) -> EfficientNet:
     return _init_model("m", num_classes, 0.3, weights)
 
 
 @MODELS.register()
-def efficientnet_v2_m_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> EfficientNet:
+def efficientnet_v2_m_fe(num_classes: int, weights: Optional[str | Path] = None) -> EfficientNet:
     return _init_model("m", num_classes, 0.3, weights, True)
 
 
 @MODELS.register()
-def efficientnet_v2_l(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> EfficientNet:
+def efficientnet_v2_l(num_classes: int, weights: Optional[str | Path] = None) -> EfficientNet:
     return _init_model("l", num_classes, 0.4, weights)
 
 
 @MODELS.register()
-def efficientnet_v2_l_fe(
-    num_classes: int, weights: Optional[str | Path] = None
-) -> EfficientNet:
+def efficientnet_v2_l_fe(num_classes: int, weights: Optional[str | Path] = None) -> EfficientNet:
     return _init_model("l", num_classes, 0.4, weights, True)
