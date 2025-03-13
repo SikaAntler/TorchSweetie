@@ -3,7 +3,7 @@ from typing import Optional
 
 from rich import print
 from torch import nn
-from torchvision.models import Weights, resnet, resnet152
+from torchvision.models import Weights, resnet
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
