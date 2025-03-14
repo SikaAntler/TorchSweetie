@@ -21,7 +21,7 @@ class ClsTester:
 
         # Get the absolute path of config file and load it
         self.cfg_file = self.root_dir / cfg_file
-        self.cfg = get_config(self.root_dir, self.cfg_file)
+        self.cfg = get_config(self.cfg_file)
 
         # Running directory, used to record results and models
         self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / exp_dir

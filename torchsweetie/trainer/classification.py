@@ -33,7 +33,7 @@ class ClsTrainer:
 
         # Get the absolute path of config file and load it
         self.cfg_file = self.root_dir / cfg_file
-        self.cfg = get_config(self.root_dir, self.cfg_file)
+        self.cfg = get_config(self.cfg_file)
 
         # Accelerator
         split_batch = False
