@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Optional
 
 from rich import print
@@ -9,9 +8,7 @@ from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 __all__ = [
     "vgg16",
-    "vgg16_fe",
     "vgg19",
-    "vgg19_fe",
 ]
 
 _pretrained_weights = {
@@ -25,14 +22,7 @@ _vgg_models = {
 }
 
 
-def _init_model(
-    model_name: str,
-    num_classes: int,
-    weights: Optional[str | Path] = None,
-    dropout: float = 0.5,
-    fe: bool = False,
-    # remap: Optional[int] = None,
-) -> VGG:
+def _init_model(model_name: str, num_classes: int, dropout, weights: Optional[str] = None) -> VGG:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
         print(
@@ -40,28 +30,19 @@ def _init_model(
             f"from {KEY_B}torchvision{KEY_E}({URL_B}{_weights.url}{URL_E})",
         )
         model = _vgg_models[model_name](weights=_weights)
-        if num_classes != 1000:
-            model.classifier = nn.Sequential(
-                nn.Linear(512 * 7 * 7, 4096),
-                nn.ReLU(True),
-                nn.Dropout(dropout),
-                nn.Linear(4096, 4096),
-                nn.ReLU(True),
-                nn.Dropout(dropout),
-                nn.Linear(4096, num_classes),
-            )
     else:
-        model = _vgg_models[model_name](num_classes=num_classes)
+        model = _vgg_models[model_name]()
 
-    if fe:
-        model.classifier = nn.Sequential(
-            nn.Linear(512 * 7 * 7, 4096),
-            nn.ReLU(True),
-            nn.Dropout(dropout),
-            nn.Linear(4096, 4096),
-            nn.ReLU(True),
-            nn.Dropout(dropout),
-        )
+    model.classifier = nn.Sequential(
+        nn.Linear(512 * 7 * 7, 4096),
+        nn.ReLU(True),
+        nn.Dropout(dropout),
+        nn.Linear(4096, 4096),
+        nn.ReLU(True),
+        nn.Dropout(dropout),
+    )
+    if num_classes != 0:
+        model.classifier.append(nn.Linear(4096, num_classes))
 
     if weights != "torchvision" and weights is not None:
         load_weights(model, weights)
@@ -70,20 +51,10 @@ def _init_model(
 
 
 @MODELS.register()
-def vgg16(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
-    return _init_model("vgg16", num_classes, weights, dropout)
+def vgg16(num_classes: int, dropout: float = 0.5, weights: Optional[str] = None) -> VGG:
+    return _init_model("vgg16", num_classes, dropout, weights)
 
 
 @MODELS.register()
-def vgg16_fe(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
-    return _init_model("vgg16", num_classes, weights, dropout, True)
-
-
-@MODELS.register()
-def vgg19(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
-    return _init_model("vgg19", num_classes, weights, dropout)
-
-
-@MODELS.register()
-def vgg19_fe(num_classes: int, weights: Optional[str | Path] = None, dropout: float = 0.5) -> VGG:
-    return _init_model("vgg19", num_classes, weights, dropout, True)
+def vgg19(num_classes: int, dropout: float = 0.5, weights: Optional[str] = None) -> VGG:
+    return _init_model("vgg19", num_classes, dropout, weights)

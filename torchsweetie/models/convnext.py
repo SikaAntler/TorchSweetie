@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import Optional
 
 from rich import print
@@ -9,13 +8,9 @@ from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 __all__ = [
     "convnext_tiny",
-    "convnext_tiny_fe",
     "convnext_small",
-    "convnext_small_fe",
     "convnext_base",
-    "convnext_base_fe",
     "convnext_large",
-    "convnext_large_fe",
 ]
 
 _pretrained_weights = {
@@ -40,12 +35,7 @@ _num_features = {
 }
 
 
-def _init_model(
-    model_name: str,
-    num_classes: int,
-    weights: Optional[str | Path] = None,
-    fe: bool = False,
-) -> ConvNeXt:
+def _init_model(model_name: str, num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
         print(
@@ -53,17 +43,13 @@ def _init_model(
             f"from {KEY_B}torchvision{KEY_E}({URL_B}{_weights.url}{URL_E})",
         )
         model = _convnext_model[model_name](weights=_weights)
-        if num_classes != 1000:
-            model.classifier = nn.Sequential(
-                model.classifier[0],
-                model.classifier[1],
-                nn.Linear(_num_features[model_name], num_classes),
-            )
     else:
-        model = _convnext_model[model_name](num_classes=num_classes)
+        model = _convnext_model[model_name]()
 
-    if fe:
+    if num_classes == 0:
         model.classifier = nn.Sequential(model.classifier[0], model.classifier[1])
+    else:
+        model.classifier[2] = nn.Linear(_num_features[model_name], num_classes)
 
     if weights != "torchvision" and weights is not None:
         load_weights(model, weights)
@@ -72,40 +58,20 @@ def _init_model(
 
 
 @MODELS.register()
-def convnext_tiny(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
+def convnext_tiny(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("tiny", num_classes, weights)
 
 
 @MODELS.register()
-def convnext_tiny_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
-    return _init_model("tiny", num_classes, weights, True)
-
-
-@MODELS.register()
-def convnext_small(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
+def convnext_small(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("small", num_classes, weights)
 
 
 @MODELS.register()
-def convnext_small_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
-    return _init_model("small", num_classes, weights, True)
-
-
-@MODELS.register()
-def convnext_base(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
+def convnext_base(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("base", num_classes, weights)
 
 
 @MODELS.register()
-def convnext_base_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
-    return _init_model("base", num_classes, weights, True)
-
-
-@MODELS.register()
-def convnext_large(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
+def convnext_large(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("large", num_classes, weights)
-
-
-@MODELS.register()
-def convnext_large_fe(num_classes: int, weights: Optional[str | Path] = None) -> ConvNeXt:
-    return _init_model("large", num_classes, weights, True)
