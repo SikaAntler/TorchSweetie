@@ -134,7 +134,6 @@ class ClsTrainer:
             self.best_acc = 0
             self.best_epoch = -1
             self.results = []
-            # self.loss_iters = []
 
     def train(self) -> None:
         # Compute the appropriate number of columns for the terminal
@@ -183,10 +182,6 @@ class ClsTrainer:
                 outputs = self.model(images)
                 loss = self.loss_fn(outputs, labels)
 
-            total_loss += loss.item()
-            # self.loss_iters.append(loss.item())
-            # TODO: gather or reduce for loss
-
             self.accelerator.backward(loss)
 
             if self.clip_grad is not None:
@@ -201,8 +196,11 @@ class ClsTrainer:
 
             self.accelerator.wait_for_everyone()
 
+            loss_reduce = self.accelerator.reduce(loss, "mean").cpu().item()  # pyright: ignore
+            total_loss += loss_reduce
+
             pbar_train.update()
-            pbar_train.set_postfix({"loss": f"{loss.item():.5f}"})
+            pbar_train.set_postfix({"loss": f"{loss_reduce:.5f}"})
 
         pbar_train.close()
 
