@@ -5,22 +5,19 @@ from torchsweetie.exporter import ClsExporter
 
 
 def main(cfg) -> None:
-    root_dir = Path.cwd()
-    cfg_file = root_dir / cfg.cfg_file
-    exp_dir = root_dir / cfg.run_dir / cfg_file.stem / cfg.exp_dir
-    assert exp_dir.exists()
-
     if cfg.best:
         weights = "best-*[0-9].pth"
     elif cfg.last:
         weights = "last-*[0-9].pth"
     else:
         weights = f"epoch-{cfg.epoch}.pth"
+
+    exp_dir = Path.cwd() / cfg.exp_dir
     weights = list(exp_dir.glob(weights))
     assert len(weights) == 1
     weights = weights[0].name
 
-    exporter = ClsExporter(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+    exporter = ClsExporter(cfg.cfg_file, cfg.exp_dir, weights)
 
     exporter.export_onnx(
         tuple(cfg.input_size),
@@ -41,13 +38,6 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="path of the config file (relative)",
-    )
-    parser.add_argument(
-        "--run-dir",
-        "--run",
-        default="runs",
-        type=str,
-        help="path of the running directory (relative)",
     )
     parser.add_argument(
         "--exp-dir",

@@ -23,7 +23,7 @@ from ..utils import (
 
 
 class ClsExporter:
-    def __init__(self, cfg_file: str, run_dir: str, exp_dir: str, weights: str) -> None:
+    def __init__(self, cfg_file: str, exp_dir: str, weights: str) -> None:
         # Get the root path (project path)
         self.root_dir = Path.cwd()
 
@@ -32,7 +32,7 @@ class ClsExporter:
         self.cfg = get_config(self.cfg_file)
 
         # Running directory, used to record results and models
-        self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / exp_dir
+        self.exp_dir = self.root_dir / exp_dir
         assert self.exp_dir.exists()
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 

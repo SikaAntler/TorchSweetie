@@ -13,7 +13,7 @@ from ..utils import DIR_B, DIR_E, MODELS, SIMILARITY, get_config
 class RetrievalTester:
     NCOLS = 100
 
-    def __init__(self, cfg_file: str, run_dir: str, exp_dir: str, weights: str) -> None:
+    def __init__(self, cfg_file: str, exp_dir: str, weights: str) -> None:
         # Get the root path (project path)
         self.root_dir = Path.cwd()
 
@@ -22,7 +22,7 @@ class RetrievalTester:
         self.cfg = get_config(self.cfg_file)
 
         # Running directory, used to record results and models
-        self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / exp_dir
+        self.exp_dir = self.root_dir / exp_dir
         assert self.exp_dir.exists()
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
@@ -77,21 +77,6 @@ class RetrievalTester:
         _, indices = similarity.topk(max(topk_list), 1)
         indices = indices.cpu()
 
-        # 计算最长类名
-        W = 0
-        for name in self.target_names:
-            length = self._display_len(name)
-            W = max(W, length)
-
-        # Recall@K
-        header = f"\n{'':>{W}}"
-        for i, k in enumerate(topk_list):
-            header += f"{f'Recall@{k}':>{12}}"
-        header += "\n"
-        print(header)
-
-        D = digits
-
         recall_metrics = {}
         for name in self.target_names:
             recall_metrics[name] = {}
@@ -104,22 +89,44 @@ class RetrievalTester:
             name = self.target_names[self.labels[i]]
             for k in topk_list:
                 recall_metrics[name][k].append(True in recall[i, :k])
-
-        micro_avg = {k: [] for k in topk_list}
-
+        report = []
         for name in self.target_names:
-            line = self._format_string(name, W)
             recall = recall_metrics[name]
+            data = [name]
             for k in topk_list:
                 recall_k = recall[k]
                 recall_k = sum(recall_k) / len(recall_k)
-                micro_avg[k].append(recall_k)
+                data.append(recall_k)
+            report.append(data)
+        report = pd.DataFrame(report)
+        report.columns = ["Class", *[f"Top-{k}" for k in topk_list]]
+
+        # 计算最长类名
+        W = 0
+        for name in self.target_names:
+            length = self._display_len(name)
+            W = max(W, length)
+
+        # Top-K
+        header = f"\n{'':>{W}}"
+        for i, k in enumerate(topk_list):
+            header += f"{f'Top-{k}':>{12}}"
+        header += "\n"
+        print(header)
+
+        D = digits
+
+        for _, data in report.iterrows():
+            data = data.to_list()
+            line = self._format_string(data[0], W)
+            for i, k in enumerate(topk_list):
+                recall_k = data[i + 1]
                 line += f"{recall_k:>12.{D}f}"
             print(line)
 
         line = f"\n{'average':>{W}}"
         for k in topk_list:
-            average = sum(micro_avg[k]) / len(micro_avg[k])
+            average = report[f"Top-{k}"].mean()
             line += f"{average:>12.{D}f}"
         print(line)
 

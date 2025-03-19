@@ -6,26 +6,23 @@ from torchsweetie.tester import RetrievalTester
 
 
 def main(cfg) -> None:
-    root_dir = Path.cwd()
-    cfg_file = root_dir / cfg.cfg_file
-    exp_dir = root_dir / cfg.run_dir / cfg_file.stem / cfg.exp_dir
-    assert exp_dir.exists()
-
     if cfg.best:
         weights = "best-*[0-9].pth"
     elif cfg.last:
         weights = "last-*[0-9].pth"
     else:
         weights = f"epoch-{cfg.epoch}.pth"
+
+    exp_dir = Path.cwd() / cfg.exp_dir
     weights = list(exp_dir.glob(weights))
     assert len(weights) == 1
     weights = weights[0].name
 
-    exporter = RetrievalExporter(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+    exporter = RetrievalExporter(cfg.cfg_file, cfg.exp_dir, weights)
 
     exporter.export()
 
-    tester = RetrievalTester(cfg.cfg_file, cfg.run_dir, cfg.exp_dir, weights)
+    tester = RetrievalTester(cfg.cfg_file, cfg.exp_dir, weights)
 
     tester.test()
 
@@ -43,18 +40,11 @@ if __name__ == "__main__":
         help="paht of the config file (relative)",
     )
     parser.add_argument(
-        "--run-dir",
-        "--run",
-        default="runs",
-        type=str,
-        help="path of the running directory (relative)",
-    )
-    parser.add_argument(
         "--exp-dir",
         "--exp",
         type=str,
         required=True,
-        help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
+        help="path of the experimental directory (relative)",
     )
 
     group_weights = parser.add_mutually_exclusive_group()
@@ -68,8 +58,6 @@ if __name__ == "__main__":
 
     parser.add_argument("--topk-list", "--topk", nargs="+", type=int, help="the list of k in topk")
     parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
-    # parser.add_argument(
-    #     "--export", action="store_true", help="whether to export the report"
-    # )
+    parser.add_argument("--export", action="store_true", help="whether to export the report")
 
     main(parser.parse_args())

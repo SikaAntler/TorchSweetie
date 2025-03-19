@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
 import torch
@@ -15,7 +14,7 @@ from ..utils import DIR_B, DIR_E, LOSSES, MODELS, URL_B, URL_E, get_config, load
 class ClsTester:
     NCOLS = 100
 
-    def __init__(self, cfg_file: str, run_dir: str, exp_dir: str, weights: str) -> None:
+    def __init__(self, cfg_file: str, exp_dir: str, weights: str) -> None:
         # Get the root path (project path)
         self.root_dir = Path.cwd()
 
@@ -24,7 +23,7 @@ class ClsTester:
         self.cfg = get_config(self.cfg_file)
 
         # Running directory, used to record results and models
-        self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / exp_dir
+        self.exp_dir = self.root_dir / exp_dir
         assert self.exp_dir.exists()
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
@@ -56,24 +55,6 @@ class ClsTester:
         self.y_true = []
         self.y_pred = []
 
-    def report(self, digits: int = 3, export: bool = False) -> None:
-        report: dict = classification_report(
-            self.y_true,
-            self.y_pred,
-            target_names=self.target_names,
-            digits=digits,
-            output_dict=True,
-            zero_division=0.0,  # pyright: ignore
-        )
-
-        self._print_report(report, digits)
-
-        if export:
-            df_report = pd.DataFrame(report)
-            filename = self.exp_dir / "report.csv"
-            df_report.to_csv(filename)
-            print(f"Saved the report: {URL_B}{filename}{URL_E}")
-
     @torch.no_grad()
     def test(self) -> None:
         pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=self.NCOLS)
@@ -99,6 +80,24 @@ class ClsTester:
             pbar.update()
 
         pbar.close()
+
+    def report(self, digits: int = 3, export: bool = False) -> None:
+        report: dict = classification_report(
+            self.y_true,
+            self.y_pred,
+            target_names=self.target_names,
+            digits=digits,
+            output_dict=True,
+            zero_division=0.0,  # pyright: ignore
+        )
+
+        self._print_report(report, digits)
+
+        if export:
+            df_report = pd.DataFrame(report)
+            filename = self.exp_dir / "report.csv"
+            df_report.to_csv(filename)
+            print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
     def _print_report(self, report: dict, digits: int) -> None:
         # 计算最长类名
