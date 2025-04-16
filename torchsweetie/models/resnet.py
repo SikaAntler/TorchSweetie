@@ -1,5 +1,6 @@
 from typing import Optional
 
+import torch
 from rich import print
 from torch import nn
 from torchvision.models import ResNet, Weights, resnet
@@ -51,24 +52,36 @@ _num_features = {
 }
 
 
+def _check_weights_size(weights: dict, model_state_dict: dict, keys: list[str]) -> None:
+    for key in keys:
+        if key not in weights or key not in model_state_dict:
+            continue
+
+        if weights[key].shape != model_state_dict[key].shape:
+            weights.pop(key)
+
+
 def _init_model(model_name: str, num_classes: int, weights: Optional[str] = None) -> ResNet:
-    if weights == "torchvision":
-        _weights: Weights = _pretrained_weights[model_name]
+    if weights is None:
+        model = _resnet_models[model_name](num_classes=num_classes)
+    elif weights == "torchvision":  # pretrained weights only for training
+        pretained_weights: Weights = _pretrained_weights[model_name]
         print(
             f"Using {KEY_B}pretrained{KEY_E} weights",
-            f"from {KEY_B}torchvision{KEY_E}({URL_B}{_weights.url}{URL_E})",
+            f"from {KEY_B}torchvision{KEY_E}({URL_B}{pretained_weights.url}{URL_E})",
         )
-        model = _resnet_models[model_name](weights=_weights)
+        model = _resnet_models[model_name](weights=pretained_weights)
+        if num_classes not in [0, 1000]:
+            model.fc = nn.Linear(_num_features[model_name], num_classes)
     else:
-        model = _resnet_models[model_name]()
+        _weights = torch.load(weights, map_location="cpu")
+        print(f"Loading weights from: {URL_B}{weights}{URL_E}")
+        model = _resnet_models[model_name](num_classes=num_classes)
+        _check_weights_size(_weights, model.state_dict(), ["fc.weight", "fc.bias"])
+        model.load_state_dict(_weights, False)
 
     if num_classes == 0:
         model.fc = nn.Identity()  # pyright: ignore
-    else:
-        model.fc = nn.Linear(_num_features[model_name], num_classes)
-
-    if weights != "torchvision" and weights is not None:
-        load_weights(model, weights)
 
     return model
 
