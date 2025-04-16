@@ -1,6 +1,7 @@
 import random
 from typing import Any, Literal
 
+import numpy as np
 import torchvision.transforms as T
 from PIL import Image, ImageFilter
 from torch import nn
@@ -21,6 +22,25 @@ __all__ = [
     "ToRGB",
     "ToTensor",
 ]
+
+
+@TRANSFORMS.register()
+class ColorGrading(nn.Module):
+    def __init__(self, factor: list[float]) -> None:
+        super().__init__()
+
+        assert len(factor) == 3
+
+        self.factor = factor
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        array = np.array(image, dtype=np.float32)
+
+        for i in range(3):
+            array[:, :, i] *= self.factor[i]
+        array = np.clip(array, 0, 255).astype(np.uint8)
+
+        return Image.fromarray(array)
 
 
 @TRANSFORMS.register()
