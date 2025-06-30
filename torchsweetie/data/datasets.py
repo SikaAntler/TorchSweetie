@@ -1,3 +1,5 @@
+from typing import TypedDict
+
 import pandas as pd
 import torchvision.transforms as T
 from omegaconf import DictConfig
@@ -6,6 +8,11 @@ from torch import FloatTensor
 from torch.utils.data import Dataset
 
 from ..utils import TRANSFORMS
+
+
+class ImageData(TypedDict):
+    image: Image.Image
+    label: int
 
 
 class ClsDataset(Dataset):
@@ -27,6 +34,7 @@ class ClsDataset(Dataset):
         image, label = self.images[idx], self.labels[idx]
 
         image = Image.open(image)
-        image = self.transforms(image)
+        # TODO: transform可能依赖标签，因此改为传输字典；当前为了最小化改动，不改变本函数的返回值
+        image = self.transforms({"image": image, "label": label})
 
         return image, label  # pyright: ignore

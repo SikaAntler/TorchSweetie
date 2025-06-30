@@ -1,23 +1,35 @@
 import random
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 
+import cv2
 import numpy as np
 import torchvision.transforms as T
 from PIL import Image, ImageFilter
-from torch import nn
+from torch import Tensor, nn
 
+from ..data import ImageData
 from ..utils import TRANSFORMS
 
 __all__ = [
+    "ColorGrading",
+    "ColorSeperation",
+    "ContourHighlight",
     "ConvertImageMode",
     "GaussianBlur",
+    "GridRotation",
+    "RandomColorJitter",
+    "RandomColorJitterByRange",
+    "RandomGaussianBlur",
+    "RandomGrid",
+    "RandomGridRotation",
+    "RandomSharpen",
     "RandomHorizontalFlip",
     "RandomVerticalFlip",
     "RandomTranspose",
     "RemainSize",
     "ResizePad",
     "RotateVertical",
-    "SplitRGB",
+    "Sharpen",
     "SplitRotate",
     "ToRGB",
     "ToTensor",
@@ -30,7 +42,6 @@ class ColorGrading(nn.Module):
         super().__init__()
 
         assert len(factor) == 3
-
         self.factor = factor
 
     def forward(self, image: Image.Image) -> Image.Image:
@@ -41,6 +52,53 @@ class ColorGrading(nn.Module):
         array = np.clip(array, 0, 255).astype(np.uint8)
 
         return Image.fromarray(array)
+
+
+@TRANSFORMS.register()
+class ColorSeperation(nn.Module):
+    def __init__(self, channel: Literal["R", "G", "B"]) -> None:
+        super().__init__()
+
+        self.channel = "RGB".index(channel)
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        assert image.mode == "RGB"
+
+        return image.getchannel(self.channel)
+
+
+@TRANSFORMS.register()
+class ContourHighlight(nn.Module):
+    def __init__(
+        self, threshold: int | Literal["otsu"], color: Sequence[int], thickness: int = 1
+    ) -> None:
+        super().__init__()
+
+        if (not isinstance(threshold, int)) or (threshold == "otsu"):
+            assert KeyError(f"threshold should be integer or `otsu`, not {threshold}")
+        self.threshold = threshold
+
+        if not isinstance(color, tuple):
+            color = tuple(color)
+        self.color = color
+
+        self.thickness = thickness
+
+    def forward(self, data: ImageData) -> ImageData:
+        array = np.array(data["image"], dtype=np.uint8)  # (R, G, B)
+        gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
+
+        if isinstance(self.threshold, int):
+            _, binary = cv2.threshold(gray, self.threshold, 255, cv2.THRESH_BINARY_INV)
+        elif self.threshold == "otsu":
+            _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        array = cv2.drawContours(array, contours, -1, self.color, self.thickness)
+
+        data["image"] = Image.fromarray(array)
+
+        return data
 
 
 @TRANSFORMS.register()
@@ -59,6 +117,7 @@ class GaussianBlur(nn.Module):
     def __init__(self, radius: int) -> None:
         super().__init__()
 
+        assert radius >= 2
         self.filter = ImageFilter.GaussianBlur(radius)
 
     def forward(self, image: Image.Image) -> Image.Image:
@@ -66,13 +125,289 @@ class GaussianBlur(nn.Module):
 
 
 @TRANSFORMS.register()
+class GridRotation(nn.Module):
+    ROTATION_MAP = {
+        90: Image.Transpose.ROTATE_90,
+        180: Image.Transpose.ROTATE_180,
+        270: Image.Transpose.ROTATE_270,
+    }
+
+    def __init__(self, grid: int, rotation: Literal[90, 180, 270]) -> None:
+        super().__init__()
+
+        assert grid >= 2
+        self.grid = grid
+
+        self.rotation = self.ROTATION_MAP[rotation]
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        W, H = image.size
+
+        for j in range(self.grid):
+            for i in range(self.grid):
+                left = W // self.grid * i
+                top = H // self.grid * j
+                right = W if i == self.grid - 1 else W // self.grid * (i + 1)
+                bottom = H if j == self.grid - 1 else H // self.grid * (j + 1)
+
+                box = (left, top, right, bottom)
+                img = image.crop(box)
+                img = img.transpose(self.rotation)
+
+                image.paste(img, box)
+
+        return image
+
+
+@TRANSFORMS.register()
+class RandomColorJitter(nn.Module):
+    def __init__(self, r: float, g: float, b: float) -> None:
+        super().__init__()
+
+        assert 0 <= r <= 1
+        self.r = r
+
+        assert 0 <= g <= 1
+        self.g = g
+
+        assert 0 <= b <= 1
+        self.b = b
+
+    def forward(self, data: ImageData) -> ImageData:
+        image = data["image"]
+        assert image.mode == "RGB"
+
+        red, green, blue = image.split()
+        if self.r != 0:
+            red = self._jitter(red, self.r)
+        if self.g != 0:
+            green = self._jitter(green, self.g)
+        if self.b != 0:
+            blue = self._jitter(blue, self.b)
+
+        data["image"] = Image.merge("RGB", [red, green, blue])
+
+        return data
+
+    @staticmethod
+    def _jitter(img: Image.Image, p: float) -> Image.Image:
+        prob = 1 + random.uniform(-p, p)
+        array = np.array(img, dtype=np.float32) * prob
+        array = np.clip(array, 0, 255).astype(np.uint8)
+
+        return Image.fromarray(array)
+
+
+@TRANSFORMS.register()
+class RandomColorJitterByRange(nn.Module):
+    def __init__(self, dist_file: str, background: bool) -> None:
+        super().__init__()
+
+        self.color = np.arange(256)
+        self.dist = np.load(dist_file)
+        self.background = background
+
+    def forward(self, data: ImageData) -> ImageData:
+        image = data["image"]
+        label = data["label"]
+        assert image.mode == "RGB"
+
+        array = np.array(image, dtype=np.uint8)
+
+        for c in range(3):
+            channel = array[:, :, c]
+            prob = np.random.choice(self.color, 1, p=self.dist[label, c])[0]
+
+            if self.background:
+                prob /= channel.mean()
+            else:
+                _, mask = cv2.threshold(channel, 0, 1, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+                prob /= channel[mask == 1].mean()
+                prob = np.ones_like(channel, dtype=np.float32) * prob
+                prob[mask == 0] = 1
+
+            channel = channel.astype(np.float32) * prob
+            array[:, :, c] = np.clip(channel, 0, 255).astype(np.uint8)
+
+        data["image"] = Image.fromarray(array)
+
+        return data
+
+
+@TRANSFORMS.register()
+class RandomGaussianBlur(nn.Module):
+    def __init__(self, radius: int, prob: float) -> None:
+        super().__init__()
+
+        assert radius >= 2
+        self.prob = prob
+
+        assert 0.0 <= prob <= 1.0
+        self.filter = ImageFilter.GaussianBlur(radius)
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        if random.random() <= self.prob:
+            image = image.filter(self.filter)
+
+        return image
+
+
+@TRANSFORMS.register()
+class RandomGrid(nn.Module):
+    def __init__(self, grid: int, prob: float) -> None:
+        super().__init__()
+
+        assert grid >= 2
+        self.grid = grid
+
+        assert 0.0 <= prob <= 1.0
+        self.prob = prob
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        if random.random() > self.prob:
+            return image
+
+        W, H = image.size
+
+        tile_list = []
+        for j in range(self.grid):
+            for i in range(self.grid):
+                left = W // self.grid * i
+                top = H // self.grid * j
+                right = W // self.grid * (i + 1)
+                bottom = H // self.grid * (j + 1)
+                img = image.crop((left, top, right, bottom))
+                tile_list.append(img)
+        random.shuffle(tile_list)
+
+        W, H = W // self.grid * self.grid, H // self.grid * self.grid
+        new_img = Image.new(image.mode, (W, H))
+        for j in range(self.grid):
+            for i in range(self.grid):
+                img = tile_list[j * self.grid + i]
+                left = W // self.grid * i
+                top = H // self.grid * j
+                right = W // self.grid * (i + 1)
+                bottom = H // self.grid * (j + 1)
+                new_img.paste(img, (left, top, right, bottom))
+
+        return new_img
+
+
+@TRANSFORMS.register()
+class RandomGridRotation(nn.Module):
+    ROTATION_MAP = {
+        90: Image.Transpose.ROTATE_90,
+        180: Image.Transpose.ROTATE_180,
+        270: Image.Transpose.ROTATE_270,
+    }
+
+    def __init__(self, grid: int, rotation: Literal[90, 180, 270], prob: float) -> None:
+        super().__init__()
+
+        assert grid >= 2
+        self.grid = grid
+
+        self.rotation = self.ROTATION_MAP[rotation]
+
+        assert 0.0 <= prob <= 1.0
+        self.prob = prob
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        W, H = image.size
+
+        for j in range(self.grid):
+            for i in range(self.grid):
+                if random.random() > self.prob:
+                    continue
+
+                left = W // self.grid * i
+                top = H // self.grid * j
+                right = W if i == self.grid - 1 else W // self.grid * (i + 1)
+                bottom = H if j == self.grid - 1 else H // self.grid * (j + 1)
+
+                box = (left, top, right, bottom)
+                img = image.crop(box)
+                img = img.transpose(Image.Transpose.ROTATE_180)
+
+                image.paste(img, box)
+
+        return image
+
+
+@TRANSFORMS.register()
+class RandomSharpen(nn.Module):
+    def __init__(self, prob: float) -> None:
+        super().__init__()
+
+        assert 0.0 <= prob <= 1.0
+        self.prob = prob
+
+        self.filter = ImageFilter.SHARPEN()
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        if random.random() <= self.prob:
+            image = image.filter(self.filter)
+
+        return image
+
+
+@TRANSFORMS.register()
+class RandomSwapGrid(nn.Module):
+    def __init__(self, grid: int, prob: float) -> None:
+        super().__init__()
+
+        assert grid >= 2
+        self.grid = grid
+
+        assert 0.0 <= prob <= prob
+        self.prob = prob
+
+    def forward(self, image: Image.Image) -> Image.Image:
+        if random.random() > self.prob:
+            return image
+
+        idx_1 = random.randint(0, self.grid**2 - 1)
+        idx_2 = random.randint(0, self.grid**2 - 1)
+
+        W, H = image.size
+        box_1 = self._box(W, H, idx_1)
+        box_2 = self._box(W, H, idx_2)
+
+        tile_1 = image.crop(box_1)
+        tile_2 = image.crop(box_2)
+
+        image.paste(tile_1, box_2)
+        image.paste(tile_2, box_1)
+
+        return image
+
+    def _box(self, W: int, H: int, idx: int) -> tuple[int, int, int, int]:
+        i = idx // self.grid
+        j = idx % self.grid
+
+        left = W // self.grid * i
+        top = H // self.grid * j
+        right = W // self.grid * (i + 1)
+        bottom = H // self.grid * (j + 1)
+
+        return left, top, right, bottom
+
+
+@TRANSFORMS.register()
 class RandomHorizontalFlip(T.RandomHorizontalFlip):
-    pass
+    def forward(self, data: ImageData) -> ImageData:
+        data["image"] = super().forward(data["image"])  # pyright: ignore
+
+        return data
 
 
 @TRANSFORMS.register()
 class RandomVerticalFlip(T.RandomVerticalFlip):
-    pass
+    def forward(self, data: ImageData) -> ImageData:
+        data["image"] = super().forward(data["image"])  # pyright: ignore
+
+        return data
 
 
 @TRANSFORMS.register()
@@ -131,7 +466,8 @@ class ResizePad(nn.Module):
         else:
             self.pad_value = tuple(pad_value)
 
-    def forward(self, image: Image.Image) -> Image.Image:
+    def forward(self, data: ImageData) -> ImageData:
+        image = data["image"]
         width, height = image.size
         img_w, img_h = self.img_size
 
@@ -150,7 +486,9 @@ class ResizePad(nn.Module):
             top = (img_h - h) // 2
             new_img.paste(image, (0, top))
 
-        return new_img
+        data["image"] = new_img
+
+        return data
 
 
 @TRANSFORMS.register()
@@ -186,42 +524,25 @@ class RotateVertical(nn.Module):
 
 
 @TRANSFORMS.register()
-class SplitRGB(nn.Module):
-    def __init__(self, channel: Literal["R", "G", "B"]) -> None:
+class Sharpen(nn.Module):
+    def __init__(self) -> None:
         super().__init__()
 
-        match channel:
-            case "R":
-                self.channel = 0
-            case "G":
-                self.channel = 1
-            case "B":
-                self.channel = 2
+        self.filter = ImageFilter.SHARPEN()
 
     def forward(self, image: Image.Image) -> Image.Image:
-        assert image.mode == "RGB"
-
-        return image.split()[self.channel]
+        return image.filter(self.filter)
 
 
 @TRANSFORMS.register()
 class SplitRotate(nn.Module):
-    def __init__(self, mode: Literal["horizontal", "vertical", "grid"], lines: int = 1) -> None:
+    def __init__(self, mode: Literal["horizontal", "vertical"]) -> None:
         super().__init__()
 
-        if mode in ["horizontal", "vertical"]:
-            if lines != 1:
-                raise ValueError(
-                    "argument `lines` must be 1 f argument `mode` is `horizontal` or `vertical`"
-                )
-        elif mode == "grid":
-            if lines == 1:
-                raise ValueError(
-                    "argument `lines` must be bigger than 1 if argument `mode` is `grid`"
-                )
-
-        self.mode: Literal["horizontal", "vertical", "grid"] = mode
-        self.lines = lines
+        assert mode in ["horizontal", "vertical"], ValueError(
+            "argument `lines` must be 1 f argument `mode` is `horizontal` or `vertical`"
+        )
+        self.mode: Literal["horizontal", "vertical"] = mode
 
     def forward(self, image: Image.Image) -> Image.Image:
         match self.mode:
@@ -229,8 +550,6 @@ class SplitRotate(nn.Module):
                 return self._horizontal(image)
             case "vertical":
                 return self._vertical(image)
-            case "grid":
-                return self._grid(image)
 
     def _horizontal(self, image: Image.Image) -> Image.Image:
         W, H = image.size
@@ -266,48 +585,6 @@ class SplitRotate(nn.Module):
 
         return new_img
 
-    def _grid(self, image: Image.Image) -> Image.Image:
-        W, H = image.size
-
-        new_img = Image.new(image.mode, image.size)
-
-        for j in range(self.lines):
-            for i in range(self.lines):
-                left = W // self.lines * i
-                top = H // self.lines * j
-                right = W if i == self.lines - 1 else W // self.lines * (i + 1)
-                bottom = H if j == self.lines - 1 else H // self.lines * (j + 1)
-
-                box = (left, top, right, bottom)
-                img = image.crop(box)
-                img = img.transpose(Image.Transpose.ROTATE_180)
-
-                new_img.paste(img, box)
-
-        # box_left_top = (0, 0, W // 2, H // 2)
-        # img_left_top = image.crop(box_left_top)
-        # img_left_top = img_left_top.transpose(Image.Transpose.ROTATE_180)
-        #
-        # box_right_top = (W // 2, 0, W, H // 2)
-        # img_right_top = image.crop(box_right_top)
-        # img_right_top = img_right_top.transpose(Image.Transpose.ROTATE_180)
-        #
-        # box_left_bottom = (0, H // 2, W // 2, H)
-        # img_left_bottom = image.crop(box_left_bottom)
-        # img_left_bottom = img_left_bottom.transpose(Image.Transpose.ROTATE_180)
-        #
-        # box_right_bottom = (W // 2, H // 2, W, H)
-        # img_right_bottom = image.crop(box_right_bottom)
-        # img_right_bottom = img_right_bottom.transpose(Image.Transpose.ROTATE_180)
-        #
-        # new_img = Image.new(image.mode, image.size)
-        # new_img.paste(img_left_top, box_left_top)
-        # new_img.paste(img_right_top, box_right_top)
-        # new_img.paste(img_left_bottom, box_left_bottom)
-        # new_img.paste(img_right_bottom, box_right_bottom)
-
-        return new_img
-
 
 @TRANSFORMS.register()
 class ToRGB(nn.Module):
@@ -317,4 +594,5 @@ class ToRGB(nn.Module):
 
 @TRANSFORMS.register()
 class ToTensor(T.ToTensor):
-    pass
+    def __call__(self, data: ImageData) -> Tensor:
+        return super().__call__(data["image"])
