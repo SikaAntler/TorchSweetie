@@ -9,9 +9,9 @@ from rich.console import Console
 def main(cfg) -> None:
     # 计算最长别名
     N = 12
-    if cfg.alias_list is not None:
-        assert len(cfg.exp_list) == len(cfg.alias_list), "别名必须与实验对应"
-        for alias in cfg.alias_list:
+    if cfg.aliases is not None:
+        assert len(cfg.exp_list) == len(cfg.aliases), "别名必须与实验对应"
+        for alias in cfg.aliases:
             length = display_len(alias)
             N = max(N, length)
         N = N + 2 if N >= 12 else N
@@ -25,7 +25,7 @@ def main(cfg) -> None:
     report = report.to_dict()
     W = 0
     for key in report.keys():
-        length = display_len(key)
+        length = display_len(key)  # pyright: ignore
         W = max(W, length)
 
     header = f"\n{'':>{W}}"
@@ -34,10 +34,10 @@ def main(cfg) -> None:
     for i, exp_dir in enumerate(cfg.exp_list):
         exp_dir = ROOT / exp_dir
 
-        if cfg.alias_list is None:
+        if cfg.aliases is None:
             exp_name = exp_dir.name.split("-")[-1]
         else:
-            exp_name = cfg.alias_list[i]
+            exp_name = cfg.aliases[i]
 
         header += format_string(exp_name, N)
 
@@ -66,7 +66,8 @@ def main(cfg) -> None:
         # find the maximum f1 score
         f1_scores = []
         for j in range(len(cfg.exp_list)):
-            f1_scores.append(float(f1_score_list[j][i]))
+            f1_score = float(f1_score_list[j][i])
+            f1_scores.append(round(f1_score, D))
         max_f1_score = max(f1_scores)
 
         string = f"{class_name}"
@@ -82,16 +83,13 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument(
-        "--exp-list",
-        "--exp",
+        "exp_list",
         nargs="+",
         type=str,
-        required=True,
-        help="list of some experimental directories (relative e.g. YYYYmmdd-HHMMSS)",
+        help="list of some experimental directories (e.g. path/to/exp_name/YYYYmmdd-HHMMSS)",
     )
     parser.add_argument(
-        "--alias-list",
-        "--alias",
+        "--aliases",
         nargs="+",
         type=str,
         help="list of some aliases for experimental directories",

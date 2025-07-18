@@ -12,29 +12,31 @@ def main(cfg) -> None:
     report = pd.read_csv(ROOT / cfg.exp_name / "report.csv", index_col=0)
     report = report.to_dict()
 
+    N = 12
+
     # 计算最长类名
     W = 0
     for key in report.keys():
-        length = display_len(key)
+        length = display_len(key)  # pyright: ignore
         W = max(W, length)
 
-    print(f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n")
+    print(f"\n{'':>{W}}{'precision':>{N}}{'recall':>{N}}{'f1-score':>{N}}{'support':>{N}}\n\n")
 
     D = cfg.digits
 
     for key, value in report.items():
-        class_name = format_string(key, W)
+        class_name = format_string(key, W)  # pyright: ignore
 
         if key == "accuracy":
-            f1_score = value["f1-score"]  # pandas解析问题
-            print(f"\n{class_name}{'':>12}{'':>12}{f1_score:>12.{D}f}{'':>12}")
+            f1_score = round(value["f1-score"], D)  # pandas解析问题
+            print(f"\n{class_name}{'':>{N}}{'':>{N}}{f1_score:>{N}.{D}f}{'':>{N}}")
         else:
-            precision = value["precision"]
-            recall = value["recall"]
-            f1_score = value["f1-score"]
+            precision = round(value["precision"], D)
+            recall = round(value["recall"], D)
+            f1_score = round(value["f1-score"], D)
             support = int(value["support"])
             print(
-                f"{class_name}{precision:>12.{D}f}{recall:>12.{D}f}{f1_score:12.{D}f}{support:>12}"
+                f"{class_name}{precision:>{N}.{D}f}{recall:>{N}.{D}f}{f1_score:{N}.{D}f}{support:>{N}}"
             )
 
 
@@ -42,11 +44,9 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument(
-        "--exp-name",
-        "--exp",
+        "exp_name",
         type=str,
-        required=True,
-        help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
+        help="path of the experimental directory (e.g. path/to/exp_name/YYYYmmdd-HHMMSS)",
     )
     parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
 

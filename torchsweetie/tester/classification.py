@@ -100,13 +100,15 @@ class ClsTester:
             print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
     def _print_report(self, report: dict, digits: int) -> None:
+        N = 12
+
         # 计算最长类名
         W = 0
         for key in report.keys():
             length = self._display_len(key)
             W = max(W, length)
 
-        print(f"\n{'':>{W}}{'precision':>12}{'recall':>12}{'f1-score':>12}{'support':>12}\n\n")
+        print(f"\n{'':>{W}}{'precision':>{N}}{'recall':>{N}}{'f1-score':>{N}}{'support':>{N}}\n\n")
 
         D = digits
 
@@ -114,14 +116,15 @@ class ClsTester:
             class_name = self._format_string(key, W)
 
             if key == "accuracy":
-                print(f"\n{class_name}{'':>12}{'':>12}{value:>12.{digits}f}{'':>12}")
+                value = round(value, D)
+                print(f"\n{class_name}{'':>{N}}{'':>{N}}{value:>{N}.{D}f}{'':>{N}}")
             else:
-                precision = value["precision"]
-                recall = value["recall"]
-                f1_score = value["f1-score"]
+                precision = round(value["precision"], D)
+                recall = round(value["recall"], D)
+                f1_score = round(value["f1-score"], D)
                 support = value["support"]
                 print(
-                    f"{class_name}{precision:>12.{D}f}{recall:>12.{D}f}{f1_score:12.{D}f}{support:>12}"
+                    f"{class_name}{precision:>{N}.{D}f}{recall:>{N}.{D}f}{f1_score:{N}.{D}f}{support:>{N}}"
                 )
 
     @staticmethod
