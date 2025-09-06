@@ -28,12 +28,27 @@ def main(cfg) -> None:
     DV = cfg.digits_var
 
     data = []
+    num_var = {"Improve": 0, "Stable": 0, "Decline": 0}
+    avg_imp, avg_dec = 0, 0
     for (key, value), num in zip(base_report.items(), support):
         exp_value = exp_report[key]
         variation = (exp_value / (value + 1e-6) - 1) * 100
+
+        if key not in ["accuracy", "macro avg", "weighted avg"]:
+            if variation > 0:
+                num_var["Improve"] += 1
+                avg_imp += variation
+            elif variation == 0:
+                num_var["Stable"] += 1
+            elif variation < 0:
+                num_var["Decline"] += 1
+                avg_dec += variation
+
         exp_value = round(exp_value, DA)
         variation = round(variation, DV)
         data.append((key, value, exp_value, variation, num))
+    avg_imp /= num_var["Improve"]
+    avg_dec /= num_var["Decline"]
 
     # sort by variation
     sorted_data = sorted(data, key=lambda d: d[3])
@@ -56,6 +71,11 @@ def main(cfg) -> None:
         table.add_row(key, f"{value:.{DA}f}", f"{exp_value:.{DA}f}", variation, num)
 
     console.print(table)
+
+    for key, value in num_var.items():
+        console.print(f"{key:>7}: {value:>2} classes")
+    console.print(f"Avg Imp: {avg_imp:.2f}%")
+    console.print(f"Avg Dec: {avg_dec:.2f}%")
 
 
 if __name__ == "__main__":
