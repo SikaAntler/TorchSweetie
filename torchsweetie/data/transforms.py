@@ -12,6 +12,7 @@ from ..data import ImageData
 from ..utils import TRANSFORMS
 
 __all__ = [
+    "ColorBroken",
     "ColorGrading",
     "ColorSeperation",
     "ContourHighlight",
@@ -22,6 +23,7 @@ __all__ = [
     "RandomColorJitterByRange",
     "RandomGaussianBlur",
     "RandomGaussianBlurClasswise",
+    "RandomGaussianBlurByClarity",
     "RandomGrid",
     "RandomGridRotation",
     "RandomSharpen",
@@ -37,6 +39,25 @@ __all__ = [
     "ToRGB",
     "ToTensor",
 ]
+
+
+@TRANSFORMS.register()
+class ColorBroken(nn.Module):
+    def __init__(self, channel: Literal["R", "G", "B"], fill: int) -> None:
+        super().__init__()
+
+        self.channel = "RGB".index(channel)
+        self.fill = fill
+
+    def forward(self, data: ImageData) -> ImageData:
+        image = data["image"]
+        assert image.mode == "RGB"
+
+        array = np.array(image, np.uint8)
+        array[:, :, self.channel] = self.fill
+        data["image"] = Image.fromarray(array)
+
+        return data
 
 
 @TRANSFORMS.register()
@@ -193,12 +214,9 @@ class RandomColorJitter(nn.Module):
         assert image.mode == "RGB"
 
         red, green, blue = image.split()
-        if self.r != 0:
-            red = self._jitter(red, self.r)
-        if self.g != 0:
-            green = self._jitter(green, self.g)
-        if self.b != 0:
-            blue = self._jitter(blue, self.b)
+        red = self._jitter(red, self.r)
+        green = self._jitter(green, self.g)
+        blue = self._jitter(blue, self.b)
 
         data["image"] = Image.merge("RGB", [red, green, blue])
 
@@ -206,6 +224,9 @@ class RandomColorJitter(nn.Module):
 
     @staticmethod
     def _jitter(img: Image.Image, p: float) -> Image.Image:
+        if p == 0:
+            return img
+
         prob = 1 + random.uniform(-p, p)
         array = np.array(img, dtype=np.float32) * prob
         array = np.clip(array, 0, 255).astype(np.uint8)
@@ -215,12 +236,15 @@ class RandomColorJitter(nn.Module):
 
 @TRANSFORMS.register()
 class RandomColorJitterByRange(nn.Module):
-    def __init__(self, dist_file: str, background: bool) -> None:
+    def __init__(self, dist_file: str, background: bool, channels: str = "RGB") -> None:
         super().__init__()
 
         self.color = np.arange(256)
         self.dist = np.load(dist_file)
         self.background = background
+
+        assert set(channels).issubset("RGB")
+        self.channels = channels
 
     def forward(self, data: ImageData) -> ImageData:
         image = data["image"]
@@ -229,9 +253,12 @@ class RandomColorJitterByRange(nn.Module):
 
         array = np.array(image, dtype=np.uint8)
 
-        for c in range(3):
-            channel = array[:, :, c]
-            prob = np.random.choice(self.color, 1, p=self.dist[label, c])[0]
+        for i, c in enumerate("RGB"):
+            if c not in self.channels:
+                continue
+
+            channel = array[:, :, i]
+            prob = np.random.choice(self.color, 1, p=self.dist[label, i])[0]
 
             if self.background:
                 prob /= channel.mean()
@@ -242,7 +269,7 @@ class RandomColorJitterByRange(nn.Module):
                 prob[mask == 0] = 1
 
             channel = channel.astype(np.float32) * prob
-            array[:, :, c] = np.clip(channel, 0, 255).astype(np.uint8)
+            array[:, :, i] = np.clip(channel, 0, 255).astype(np.uint8)
 
         data["image"] = Image.fromarray(array)
 
@@ -290,6 +317,51 @@ class RandomGaussianBlurClasswise(nn.Module):
             data["image"] = data["image"].filter(ImageFilter.GaussianBlur(self.radius[label]))
 
         return data
+
+
+@TRANSFORMS.register()
+class RandomGaussianBlurByClarity(nn.Module):
+    def __init__(self, radiuses: list[int], csv_file: str) -> None:
+        super().__init__()
+
+        self.radiuses = sorted(radiuses, reverse=True)
+
+        clarity = pd.read_csv(csv_file)
+        self.clarity_min = clarity["min"].to_numpy()
+        self.clarity_max = clarity["max"].to_numpy()
+
+    def forward(self, data: ImageData) -> ImageData:
+        label = data["label"]
+        clarity_min = self.clarity_min[label]
+        clarity_max = self.clarity_max[label]
+
+        clarity = self._tenengrad(data["image"])
+        prob = (clarity - clarity_min) / (clarity_max - clarity_min)
+        if random.random() > prob:
+            return data
+
+        radius = random.choice(self.radiuses)
+
+        while radius in self.radiuses:
+            image = data["image"].filter(ImageFilter.GaussianBlur(radius))
+            clarity = self._tenengrad(image)
+            if clarity >= clarity_min:
+                data["image"] = image
+                break
+            else:
+                radius -= 2
+
+        return data
+
+    @staticmethod
+    def _tenengrad(image: Image.Image) -> float:
+        gray = np.array(image.convert("L"))
+        grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
+        tenengrad = np.sqrt(grad_x**2 + grad_y**2)
+        clarity = np.mean(np.square(tenengrad[tenengrad != 0]))
+
+        return clarity.item()
 
 
 @TRANSFORMS.register()
