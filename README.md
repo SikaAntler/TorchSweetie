@@ -1,27 +1,35 @@
 # Overview
 
-This project was written when I was doing experiments on image classification and object detection tasks. I found there would be a lot of duplicated codes if I wrote each experiment from scratch. Then I experienced some third-party easy-training frameworks, like **Lightning** and **MMDetectio**. However, I found these frameworks were too heavily for me, and they were much difficult to modified. I considered what I truely required was a light tool which was easy to use and modified.
+This project was developed for **Image Classification** and **Object Detection** tasks.
+During my experiments, I realized that rewriting all the code from scratch for each new experiment led to a lot of redundancy.
+Therefore, I tried out other third-party frameworks, such as **Lightning**, **MMDetection** and **Detectron2**.
+However, I found these frameworks to be too heavy for my needs, and it was also difficult to modify their source code.
+After consideration, I concluded that what I really needed was a framework that is lightweight, easy to use and modified.
+
+For the reasons mentioned above, this project was created.
+It is named ==TorchSweetie==, meaning to make PyTorch "sweeter" -- aiming to bring you a more pleasant experience when using it.
 
 # Installation
 
-First of all, all my experiments were doing on **Linux** server, so I could not ensure that this project runs on MacOS and Windows in normal.
+First of all, all my experiments were conducted on a remote **Linux** server.
+Therefore, althought it is theoretically feasible, I cannot guarantee that the project will run properly on macOS or Windows.
 
-Then, I am using **Miniconda** as the python environments manager, so I highly recommend you to use **Miniconda** or **Anaconda**n like me. I would use **conda** to represent both of them in following content.
+Then, I used **Miniconda** and **Miniforge** to manage the Python environment.
+You may use any virtual environment manager you prefer, but in the following sections I will use `conda` as an example.
 
-## 1. Create Conda Environment
+## Create Virtual Environment
 
 ```bash
-$ conda create -n TorchSweetie python=3.10
+$ conda create -n TorchSweetie python=3.12
 $ conda activate TorchSweetie
 ```
 
-## 2. Install Project
+## Install Project
 
-Since the project was simple and easy to modified, I recommend to install in editable mode.
+Since the project is lightweight and easy to modified, I recommend to install it in editable mode.
 
 ```bash
 $ git clone https://github.com/SikaAntler/TorchSweetie.git
 $ cd TorchSweetie/
 $ pip install -e . --config-settings editable_mode=strict
 ```
-
