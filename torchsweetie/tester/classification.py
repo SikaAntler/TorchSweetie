@@ -8,7 +8,17 @@ from torch import nn
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..utils import DIR_B, DIR_E, LOSSES, MODELS, URL_B, URL_E, get_config, load_weights
+from ..utils import (
+    DIR_B,
+    DIR_E,
+    LOSSES,
+    MODELS,
+    URL_B,
+    URL_E,
+    get_config,
+    load_weights,
+    print_report,
+)
 
 
 class ClsTester:
@@ -81,76 +91,19 @@ class ClsTester:
 
         pbar.close()
 
-    def report(self, digits: int = 3, export: bool = False) -> None:
-        report: dict = classification_report(
+    def report(self, digits: int) -> None:
+        report = classification_report(
             self.y_true,
             self.y_pred,
             target_names=self.target_names,
-            digits=digits,
             output_dict=True,
             zero_division=0.0,  # pyright: ignore
         )
 
-        self._print_report(report, digits)
+        report = pd.DataFrame(report).T
 
-        if export:
-            df_report = pd.DataFrame(report)
-            filename = self.exp_dir / "report.csv"
-            df_report.to_csv(filename)
-            print(f"Saved the report: {URL_B}{filename}{URL_E}")
+        filename = self.exp_dir / "report.csv"
+        report.to_csv(filename)
+        print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
-    def _print_report(self, report: dict, digits: int) -> None:
-        N = 12
-
-        # 计算最长类名
-        W = 0
-        for key in report.keys():
-            length = self._display_len(key)
-            W = max(W, length)
-
-        print(f"\n{'':>{W}}{'precision':>{N}}{'recall':>{N}}{'f1-score':>{N}}{'support':>{N}}\n\n")
-
-        D = digits
-
-        for key, value in report.items():
-            class_name = self._format_string(key, W)
-
-            if key == "accuracy":
-                value = round(value, D)
-                print(f"\n{class_name}{'':>{N}}{'':>{N}}{value:>{N}.{D}f}{'':>{N}}")
-            else:
-                precision = round(value["precision"], D)
-                recall = round(value["recall"], D)
-                f1_score = round(value["f1-score"], D)
-                support = value["support"]
-                print(
-                    f"{class_name}{precision:>{N}.{D}f}{recall:>{N}.{D}f}{f1_score:{N}.{D}f}{support:>{N}}"
-                )
-
-    @staticmethod
-    def _is_chinese(c: str) -> bool:
-        assert len(c) == 1
-
-        if "\u4e00" <= c <= "\u9fa5":
-            return True
-        else:
-            return False
-
-    def _display_len(self, string: str) -> int:
-        length = 0
-        for c in string:
-            if self._is_chinese(c):
-                length += 2
-            else:
-                length += 1
-
-        return length
-
-    def _format_string(self, string: str, max_length: int) -> str:
-        length = self._display_len(string)
-
-        while length < max_length:
-            string = " " + string
-            length += 1
-
-        return string
+        print_report(filename, digits)

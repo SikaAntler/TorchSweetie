@@ -6,23 +6,30 @@ from rich.console import Console
 from rich.table import Table
 
 
+def get_report(exp_name: str) -> pd.DataFrame:
+    report = pd.read_csv(Path(exp_name).absolute() / "report.csv", index_col=0)
+    if len(report.columns.to_list()) != 4:
+        report = report.T
+
+    return report
+
+
 def main(cfg) -> None:
-    ROOT = Path.cwd()
-    console = Console()
-
-    base_report = pd.read_csv(ROOT / cfg.baseline / "report.csv", index_col=0).T
+    base_report = get_report(cfg.baseline)
     support = base_report["support"].to_list()
-    base_report = base_report["f1-score"].to_dict()
+    base_f1_score = base_report["f1-score"].to_dict()
 
-    exp_report = pd.read_csv(ROOT / cfg.exp_name / "report.csv", index_col=0).T
-    exp_report = exp_report["f1-score"].to_dict()
+    exp_report = get_report(cfg.exp_name)
+    exp_f1_score = exp_report["f1-score"].to_dict()
+
+    N = 8
 
     table = Table(title="F1-Score Variation")
-    table.add_column("Class", justify="right", style="cyan")
-    table.add_column("Base", justify="right", width=8)
-    table.add_column("Exp", justify="right", width=8)
-    table.add_column("Var(%)", justify="right", width=8)
-    table.add_column("Support", justify="right", width=8)
+    table.add_column("", justify="right", style="cyan")
+    table.add_column("baseline", justify="right", width=N)
+    table.add_column("exp", justify="right", width=N)
+    table.add_column("var(%)", justify="right", width=N)
+    table.add_column("support", justify="right", width=N)
 
     DA = cfg.digits_acc
     DV = cfg.digits_var
@@ -30,11 +37,11 @@ def main(cfg) -> None:
     data = []
     num_var = {"Improve": 0, "Stable": 0, "Decline": 0}
     avg_imp, avg_dec = 0, 0
-    for (key, value), num in zip(base_report.items(), support):
-        exp_value = exp_report[key]
-        variation = (exp_value / (value + 1e-6) - 1) * 100
+    for (idx, base_score), num in zip(base_f1_score.items(), support):
+        exp_score = exp_f1_score[idx]
+        variation = (exp_score / (base_score + 1e-6) - 1) * 100
 
-        if key not in ["accuracy", "macro avg", "weighted avg"]:
+        if idx not in ["accuracy", "macro avg", "weighted avg"]:
             if variation > 0:
                 num_var["Improve"] += 1
                 avg_imp += variation
@@ -44,36 +51,41 @@ def main(cfg) -> None:
                 num_var["Decline"] += 1
                 avg_dec += variation
 
-        exp_value = round(exp_value, DA)
+        base_score = round(base_score, DA)
+        exp_score = round(exp_score, DA)
         variation = round(variation, DV)
-        data.append((key, value, exp_value, variation, num))
-    avg_imp /= num_var["Improve"]
-    avg_dec /= num_var["Decline"]
+        data.append((idx, base_score, exp_score, variation, num))
+    avg_imp /= num_var["Improve"] + 1e-6
+    avg_dec /= num_var["Decline"] + 1e-6
 
     # sort by variation
     sorted_data = sorted(data, key=lambda d: d[3])
     sorted_keys = [d[0] for d in sorted_data]
 
-    for key, value, exp_value, variation, num in data:
-        if key in sorted_keys[: cfg.topn]:
+    for i, (idx, base_score, exp_score, variation, num) in enumerate(data):
+        if cfg.interval != 0 and i <= len(data) - 3 and i != 0 and i % cfg.interval == 0:
+            table.add_row()
+
+        if idx in sorted_keys[: cfg.topn]:
             variation = f"[bold red]{variation:.{DV}f}[/bold red]"
-        elif key in sorted_keys[-cfg.topn :]:
+        elif idx in sorted_keys[-cfg.topn :]:
             variation = f"[bold blue]{variation:.{DV}f}[/bold blue]"
         else:
             variation = f"{variation:.2f}"
 
-        if key == "accuracy":
-            table.add_row("", "", "", "", "")
+        if idx == "accuracy":
+            table.add_row()
             num = ""
         else:
             num = str(int(num))
 
-        table.add_row(key, f"{value:.{DA}f}", f"{exp_value:.{DA}f}", variation, num)
+        table.add_row(idx, f"{base_score:.{DA}f}", f"{exp_score:.{DA}f}", variation, num)
 
+    console = Console()
     console.print(table)
 
-    for key, value in num_var.items():
-        console.print(f"{key:>7}: {value:>2} classes")
+    for idx, base_score in num_var.items():
+        console.print(f"{idx:>7}: {base_score:>2} classes")
     console.print(f"Avg Imp: {avg_imp:.2f}%")
     console.print(f"Avg Dec: {avg_dec:.2f}%")
 
@@ -101,5 +113,6 @@ if __name__ == "__main__":
         type=int,
         help="highlight variations for top n class of both increase and decrease",
     )
+    parser.add_argument("--interval", default=0, type=int, help="interval for adding an empty line")
 
     main(parser.parse_args())

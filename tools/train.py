@@ -4,6 +4,14 @@ from torchsweetie.exporter import RetrievalExporter
 from torchsweetie.tester import ClsTester, RetrievalTester
 from torchsweetie.trainer import ClsTrainer
 
+# def main(cfg) -> None:
+#     filename = Path(cfg.cfg_file)
+#     if not filename.is_absolute():
+#         filename = filename.absolute()
+#
+#     # filename = Path.cwd() / "test_report" / "new" / "report.csv"
+#     # print_report._print_new(filename, 3)
+
 
 def main(cfg) -> None:
     trainer = ClsTrainer(cfg.cfg_file, cfg.run_dir)
@@ -31,7 +39,7 @@ def main(cfg) -> None:
 
         tester = ClsTester(cfg.cfg_file, exp_dir, weights)
         tester.test()
-        tester.report(cfg.digits, cfg.export)
+        tester.report(cfg.digits)
     elif cfg.retrieval:
         print(f"\n==================Starting Retrieval==================\n")
 
@@ -84,9 +92,6 @@ if __name__ == "__main__":
         default=3,
         type=int,
         help="digits remain for accuracy when print report after test or retrieval",
-    )
-    parser.add_argument(
-        "--export", action="store_true", help="whether to export the report after test"
     )
     parser.add_argument(
         "--topk-list", "--topk", nargs="+", type=int, help="the list of k in topk when retrieval"
