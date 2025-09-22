@@ -13,6 +13,7 @@ from .registry import (
     UTILS,
     Registry,
 )
+from .seed import seed_all_rng
 from .smart_sort import smart_sort
 from .string_utils import display_len, format_string, is_chinese
 from .weight import load_weights
@@ -31,6 +32,7 @@ __all__ = [
     "TRANSFORMS",
     "UTILS",
     "Registry",
+    "seed_all_rng",
     "smart_sort",
     "display_len",
     "format_string",

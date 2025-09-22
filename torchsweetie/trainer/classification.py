@@ -21,6 +21,7 @@ from ..utils import (
     MODELS,
     OPTIMIZERS,
     get_config,
+    seed_all_rng,
 )
 
 
@@ -34,6 +35,9 @@ class ClsTrainer:
         # Get the absolute path of config file and load it
         self.cfg_file = self.root_dir / cfg_file
         self.cfg = get_config(self.cfg_file)
+
+        # Seed
+        seed_all_rng(self.cfg.train.get("seed", 1997), self.cfg.train.get("deterministic", False))
 
         # Accelerator
         split_batch = False
