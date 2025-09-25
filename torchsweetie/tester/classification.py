@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report
 from torch import nn
 from tqdm import tqdm
 
-from ..data import create_cls_dataloader
+from ..data import ClsDataPack, create_cls_dataloader
 from ..utils import (
     DIR_B,
     DIR_E,
@@ -76,13 +76,16 @@ class ClsTester:
         if self.loss_fn is not None:
             self.loss_fn.eval()
 
-        for images, labels in self.dataloader:
-            self.y_true.extend(labels.tolist())
-            images, labels = images.cuda(), labels.cuda()
-            outputs = self.model(images)
+        for data in self.dataloader:
+            data: ClsDataPack
+            self.y_true.extend(data.targets.tolist())
+            data.inputs = data.inputs.cuda()
+            data.targets = data.targets.cuda()
+            data.ori_sizes = data.ori_sizes.cuda()
 
+            outputs = self.model(data)
             if self.loss_fn is not None:
-                outputs = self.loss_fn(outputs, labels)  # pyright: ignore
+                outputs = self.loss_fn(outputs, data)  # pyright: ignore
 
             predicts = torch.argmax(outputs, dim=1)
             self.y_pred.extend(predicts.tolist())

@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import torchvision.transforms as T
 from PIL import Image, ImageFilter
-from torch import Tensor, nn
+from torch import nn
 
-from ..data import ImageData
+from ..data import ClsDataImage, ClsDataTensor
 from ..utils import TRANSFORMS
 
 __all__ = [
@@ -49,7 +49,7 @@ class ColorBroken(nn.Module):
         self.channel = "RGB".index(channel)
         self.fill = fill
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         assert image.mode == "RGB"
 
@@ -68,7 +68,7 @@ class ColorGrading(nn.Module):
         assert len(factor) == 3
         self.factor = factor
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
 
         array = np.array(image, dtype=np.float32)
@@ -88,7 +88,7 @@ class ColorSeperation(nn.Module):
 
         self.channel = "RGB".index(channel)
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         assert image.mode == "RGB"
 
@@ -114,7 +114,7 @@ class ContourHighlight(nn.Module):
 
         self.thickness = thickness
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         array = np.array(data["image"], dtype=np.uint8)  # (R, G, B)
         gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
 
@@ -138,7 +138,7 @@ class ConvertImageMode(nn.Module):
 
         self.mode = mode
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         data["image"] = data["image"].convert(self.mode)
 
         return data
@@ -152,7 +152,7 @@ class GaussianBlur(nn.Module):
         assert radius >= 2
         self.filter = ImageFilter.GaussianBlur(radius)
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         data["image"] = data["image"].filter(self.filter)
 
         return data
@@ -174,7 +174,7 @@ class GridRotation(nn.Module):
 
         self.rotation = self.ROTATION_MAP[rotation]
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
 
         W, H = image.size
@@ -209,7 +209,7 @@ class RandomColorJitter(nn.Module):
         assert 0 <= b <= 1
         self.b = b
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         assert image.mode == "RGB"
 
@@ -246,7 +246,7 @@ class RandomColorJitterByRange(nn.Module):
         assert set(channels).issubset("RGB")
         self.channels = channels
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         label = data["label"]
         assert image.mode == "RGB"
@@ -287,7 +287,7 @@ class RandomGaussianBlur(nn.Module):
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         if random.random() <= self.prob:
             data["image"] = data["image"].filter(self.filter)
 
@@ -310,7 +310,7 @@ class RandomGaussianBlurClasswise(nn.Module):
         self.radius = tuple(radius)
         self.prob = tuple(prob)
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         label = data["label"]
 
         if random.random() <= self.prob[label]:
@@ -330,7 +330,7 @@ class RandomGaussianBlurByClarity(nn.Module):
         self.clarity_min = clarity["min"].to_numpy()
         self.clarity_max = clarity["max"].to_numpy()
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         label = data["label"]
         clarity_min = self.clarity_min[label]
         clarity_max = self.clarity_max[label]
@@ -375,7 +375,7 @@ class RandomGrid(nn.Module):
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         if random.random() > self.prob:
             return data
 
@@ -426,7 +426,7 @@ class RandomGridRotation(nn.Module):
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         W, H = image.size
 
@@ -459,7 +459,7 @@ class RandomSharpen(nn.Module):
 
         self.filter = ImageFilter.SHARPEN()
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         if random.random() <= self.prob:
             data["image"] = data["image"].filter(self.filter)
 
@@ -477,7 +477,7 @@ class RandomSwapGrid(nn.Module):
         assert 0.0 <= prob <= prob
         self.prob = prob
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         if random.random() > self.prob:
             return data
 
@@ -512,7 +512,7 @@ class RandomSwapGrid(nn.Module):
 
 @TRANSFORMS.register()
 class RandomHorizontalFlip(T.RandomHorizontalFlip):
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         data["image"] = super().forward(data["image"])  # pyright: ignore
 
         return data
@@ -520,7 +520,7 @@ class RandomHorizontalFlip(T.RandomHorizontalFlip):
 
 @TRANSFORMS.register()
 class RandomVerticalFlip(T.RandomVerticalFlip):
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         data["image"] = super().forward(data["image"])  # pyright: ignore
 
         return data
@@ -528,7 +528,7 @@ class RandomVerticalFlip(T.RandomVerticalFlip):
 
 @TRANSFORMS.register()
 class RandomTranspose(nn.Module):
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         idx = random.randint(0, 6)
         transpose = Image.Transpose(idx)
 
@@ -554,7 +554,7 @@ class RemainSize(nn.Module):
 
         self.resize = ResizePad(img_size, pad_value)
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         width, height = image.size
         img_w, img_h = self.img_size
@@ -586,24 +586,25 @@ class ResizePad(nn.Module):
         else:
             self.pad_value = tuple(pad_value)
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
-        width, height = image.size
-        img_w, img_h = self.img_size
 
-        new_img = Image.new(image.mode, (img_w, img_h), self.pad_value)  # pyright: ignore
+        ori_width, ori_height = image.size
 
-        ratio_w = img_w / width
-        ratio_h = img_h / height
+        img_width, img_height = self.img_size
+        new_img = Image.new(image.mode, (img_width, img_height), self.pad_value)  # pyright: ignore
+
+        ratio_w = img_width / ori_width
+        ratio_h = img_height / ori_height
         if ratio_w >= ratio_h:
-            w = int(ratio_h * width)
-            image = image.resize((w, img_h))
-            left = (img_w - w) // 2
+            w = int(ratio_h * ori_width)
+            image = image.resize((w, img_height))
+            left = (img_width - w) // 2
             new_img.paste(image, (left, 0))
         else:
-            h = int(ratio_w * height)
-            image = image.resize((img_w, h))
-            top = (img_h - h) // 2
+            h = int(ratio_w * ori_height)
+            image = image.resize((img_width, h))
+            top = (img_height - h) // 2
             new_img.paste(image, (0, top))
 
         data["image"] = new_img
@@ -630,7 +631,7 @@ class RotateVertical(nn.Module):
             case "bicubic":
                 self.resampling = Image.Resampling.BICUBIC
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         image = data["image"]
         width, height = image.size
 
@@ -647,7 +648,7 @@ class Sharpen(nn.Module):
 
         self.filter = ImageFilter.SHARPEN()
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         data["image"] = data["image"].filter(self.filter)
 
         return data
@@ -663,7 +664,7 @@ class SplitRotate(nn.Module):
         )
         self.mode: Literal["horizontal", "vertical"] = mode
 
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         match self.mode:
             case "horizontal":
                 data["image"] = self._horizontal(data["image"])
@@ -708,8 +709,26 @@ class SplitRotate(nn.Module):
 
 
 @TRANSFORMS.register()
+class StandarizeSize(nn.Module):
+    def __init__(self, w_mean: float, w_std: float, h_mean: float, h_std: float) -> None:
+        super().__init__()
+
+        self.w_mean = w_mean
+        self.w_std = w_std
+        self.h_mean = h_mean
+        self.h_std = h_std
+
+    def forward(self, data: ClsDataTensor) -> ClsDataTensor:
+        w = (data.ori_size[0] - self.w_mean) / self.w_std
+        h = (data.ori_size[1] - self.h_mean) / self.h_std
+        data.ori_size = (w, h)
+
+        return data
+
+
+@TRANSFORMS.register()
 class ToRGB(nn.Module):
-    def forward(self, data: ImageData) -> ImageData:
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
         data["image"] = data["image"].convert("RGB")
 
         return data
@@ -717,5 +736,20 @@ class ToRGB(nn.Module):
 
 @TRANSFORMS.register()
 class ToTensor(T.ToTensor):
-    def __call__(self, data: ImageData) -> Tensor:
-        return super().__call__(data["image"])
+    def __call__(self, data: ClsDataImage) -> ClsDataTensor:
+        image = super().__call__(data["image"])
+
+        return ClsDataTensor(image, data["label"], data["ori_shape"])
+
+
+@TRANSFORMS.register()
+class VerticalRotate(nn.Module):
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
+        W, H = data["image"].size
+        assert data["ori_shape"] == (W, H)
+
+        if W > H:
+            data["image"] = data["image"].transpose(Image.Transpose.ROTATE_90)
+            data["ori_shape"] = (H, W)
+
+        return data

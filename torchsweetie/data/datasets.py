@@ -1,18 +1,36 @@
+from dataclasses import dataclass
 from typing import TypedDict
 
 import pandas as pd
+import torch
 import torchvision.transforms as T
 from omegaconf import DictConfig
 from PIL import Image
-from torch import FloatTensor
+from torch import Tensor
 from torch.utils.data import Dataset
 
 from ..utils import TRANSFORMS
 
 
-class ImageData(TypedDict):
+# TODO 改成dataclass
+class ClsDataImage(TypedDict):
     image: Image.Image
     label: int
+    ori_shape: tuple[int, int]
+
+
+@dataclass
+class ClsDataTensor:
+    image: Tensor
+    label: int
+    ori_size: tuple
+
+
+@dataclass
+class ClsDataPack:
+    inputs: Tensor
+    targets: Tensor
+    ori_sizes: Tensor
 
 
 class ClsDataset(Dataset):
@@ -30,11 +48,18 @@ class ClsDataset(Dataset):
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __getitem__(self, idx: int) -> tuple[FloatTensor, int]:
+    def __getitem__(self, idx: int) -> ClsDataTensor:
         image, label = self.images[idx], self.labels[idx]
 
         image = Image.open(image)
-        # TODO: transform可能依赖标签，因此改为传输字典；当前为了最小化改动，不改变本函数的返回值
-        image = self.transforms({"image": image, "label": label})
+        data = self.transforms({"image": image, "label": label, "ori_shape": image.size})
 
-        return image, label  # pyright: ignore
+        return data  # pyright: ignore
+
+    @staticmethod
+    def collate_fn(batch_list: list[ClsDataTensor]) -> ClsDataPack:
+        images = torch.stack([b.image for b in batch_list])
+        labels = torch.tensor([b.label for b in batch_list], dtype=torch.long)
+        ori_shapes = torch.tensor([b.ori_size for b in batch_list], dtype=torch.float)
+
+        return ClsDataPack(images, labels, ori_shapes)

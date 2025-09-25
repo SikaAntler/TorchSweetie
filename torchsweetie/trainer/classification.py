@@ -10,7 +10,7 @@ from rich import print
 from torch import nn
 from tqdm import tqdm
 
-from ..data import create_cls_dataloader
+from ..data import ClsDataPack, create_cls_dataloader
 from ..utils import (
     DIR_B,
     DIR_E,
@@ -179,12 +179,15 @@ class ClsTrainer:
             disable=not self.accelerator.is_main_process,
         )
 
-        for images, labels in self.train_dataloader:
-            images, labels = images.to(self.device), labels.to(self.device)
+        for data in self.train_dataloader:
+            data: ClsDataPack
+            data.inputs = data.inputs.to(self.device)
+            data.targets = data.targets.to(self.device)
+            data.ori_sizes = data.ori_sizes.to(self.device)
 
             with self.accelerator.autocast():
-                outputs = self.model(images)
-                loss = self.loss_fn(outputs, labels)
+                outputs = self.model(data)
+                loss = self.loss_fn(outputs, data)
 
             self.accelerator.backward(loss)
 
@@ -230,14 +233,18 @@ class ClsTrainer:
 
         corrects = 0
 
-        for images, labels in self.val_dataloader:
-            images, labels = images.to(self.device), labels.to(self.device)
-            outputs = self.model(images)
+        for data in self.val_dataloader:
+            data: ClsDataPack
+            data.inputs = data.inputs.to(self.device)
+            data.targets = data.targets.to(self.device)
+            data.ori_sizes = data.ori_sizes.to(self.device)
+
+            outputs = self.model(data)
             if self.loss_params:
-                outputs = self.loss_fn(outputs, labels)
+                outputs = self.loss_fn(outputs, data)
 
             predicts = torch.argmax(outputs, dim=1)
-            metrics = self.accelerator.gather_for_metrics(predicts == labels)
+            metrics = self.accelerator.gather_for_metrics(predicts == data.targets)
             corrects += metrics.sum().cpu().item()  # pyright: ignore
 
             pbar_val.update()
