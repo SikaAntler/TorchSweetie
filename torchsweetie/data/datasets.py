@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import TypedDict
 
 import pandas as pd
 import torch
@@ -12,8 +11,8 @@ from torch.utils.data import Dataset
 from ..utils import TRANSFORMS
 
 
-# TODO 改成dataclass
-class ClsDataImage(TypedDict):
+@dataclass
+class ClsDataImage:
     image: Image.Image
     label: int
     ori_shape: tuple[int, int]
@@ -52,7 +51,7 @@ class ClsDataset(Dataset):
         image, label = self.images[idx], self.labels[idx]
 
         image = Image.open(image)
-        data = self.transforms({"image": image, "label": label, "ori_shape": image.size})
+        data = self.transforms(ClsDataImage(image, label, image.size))
 
         return data  # pyright: ignore
 
