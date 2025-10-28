@@ -1,5 +1,5 @@
 import random
-from typing import Any, Literal, Sequence
+from typing import Literal, Sequence
 
 import cv2
 import numpy as np
@@ -31,8 +31,10 @@ __all__ = [
     "RandomHorizontalFlip",
     "RandomVerticalFlip",
     "RandomTranspose",
-    "RemainSize",
+    "Resize",
+    "ResizeCrop",
     "ResizePad",
+    "ResizeRemain",
     "Sharpen",
     "SplitRotate",
     "StandarizeSize",
@@ -525,14 +527,110 @@ class RandomTranspose(nn.Module):
 
 
 @TRANSFORMS.register()
-class RemainSize(nn.Module):
-    def __init__(self, img_size: int | Any, pad_value: int | Any) -> None:
+class Resize(nn.Module):
+    def __init__(self, img_size: int | Sequence[int]) -> None:
         super().__init__()
 
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
             self.img_size = tuple(img_size)
+            assert len(self.img_size) == 2
+
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
+        data.image = data.image.resize(self.img_size)
+
+        return data
+
+
+@TRANSFORMS.register()
+class ResizeCrop(nn.Module):
+    def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
+        super().__init__()
+
+        if isinstance(img_size, int):
+            self.img_size = (img_size, img_size)
+        else:
+            self.img_size = tuple(img_size)
+            assert len(self.img_size) == 2
+
+        if isinstance(pad_value, int):
+            self.pad_value = pad_value
+        else:
+            self.pad_value = tuple(pad_value)
+
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
+        W, H = data.image.size
+        img_w, img_h = self.img_size
+
+        ratio_w = img_w / W
+        ratio_h = img_h / H
+        if ratio_w >= ratio_h:
+            h = int(ratio_w * H)
+            image = data.image.resize((img_w, h))
+            top = (h - img_h) // 2
+            bottom = top + img_h
+            data.image = image.crop((0, top, img_w, bottom))
+        else:
+            w = int(ratio_h * W)
+            image = data.image.resize((w, img_h))
+            left = (w - img_w) // 2
+            right = left + img_w
+            data.image = image.crop((left, 0, right, img_h))
+
+        return data
+
+
+@TRANSFORMS.register()
+class ResizePad(nn.Module):
+    def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
+        super().__init__()
+
+        if isinstance(img_size, int):
+            self.img_size = (img_size, img_size)
+        else:
+            self.img_size = tuple(img_size)
+            assert len(self.img_size) == 2
+
+        if isinstance(pad_value, int):
+            self.pad_value = pad_value
+        else:
+            self.pad_value = tuple(pad_value)
+
+    def forward(self, data: ClsDataImage) -> ClsDataImage:
+        W, H = data.image.size
+
+        img_w, img_h = self.img_size
+        new_img = Image.new(data.image.mode, self.img_size, self.pad_value)  # pyright: ignore
+
+        ratio_w = img_w / W
+        ratio_h = img_h / H
+        if ratio_w >= ratio_h:
+            w = int(ratio_h * W)
+            image = data.image.resize((w, img_h))
+            left = (img_w - w) // 2
+            new_img.paste(image, (left, 0))
+        else:
+            h = int(ratio_w * H)
+            image = data.image.resize((img_w, h))
+            top = (img_h - h) // 2
+            new_img.paste(image, (0, top))
+
+        data.image = new_img
+
+        return data
+
+
+@TRANSFORMS.register()
+class ResizeRemain(nn.Module):
+    def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
+        super().__init__()
+
+        if isinstance(img_size, int):
+            self.img_size = (img_size, img_size)
+        else:
+            self.img_size = tuple(img_size)
+            assert len(self.img_size) == 2
 
         if isinstance(pad_value, int):
             self.pad_value = pad_value
@@ -546,52 +644,13 @@ class RemainSize(nn.Module):
         img_w, img_h = self.img_size
 
         if width <= img_w and height <= img_h:
-            new_img = Image.new(image.mode, (img_w, img_h), self.pad_value)  # pyright: ignore
+            new_img = Image.new(data.image.mode, self.img_size, self.pad_value)  # pyright: ignore
             left = (img_w - width) // 2
             top = (img_h - height) // 2
             new_img.paste(data.image, (left, top))
             data.image = new_img
         else:
             data = self.resize(data)
-
-        return data
-
-
-@TRANSFORMS.register()
-class ResizePad(nn.Module):
-    def __init__(self, img_size: int | Any, pad_value: int | Any) -> None:
-        super().__init__()
-
-        if isinstance(img_size, int):
-            self.img_size = (img_size, img_size)
-        else:
-            self.img_size = tuple(img_size)
-
-        if isinstance(pad_value, int):
-            self.pad_value = pad_value
-        else:
-            self.pad_value = tuple(pad_value)
-
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
-        W, H = data.image.size
-
-        new_w, new_h = self.img_size
-        new_img = Image.new(data.image.mode, (new_w, new_h), self.pad_value)  # pyright: ignore
-
-        ratio_w = new_w / W
-        ratio_h = new_h / H
-        if ratio_w >= ratio_h:
-            w = int(ratio_h * W)
-            image = data.image.resize((w, new_h))
-            left = (new_w - w) // 2
-            new_img.paste(image, (left, 0))
-        else:
-            h = int(ratio_w * H)
-            image = data.image.resize((new_w, h))
-            top = (new_h - h) // 2
-            new_img.paste(image, (0, top))
-
-        data.image = new_img
 
         return data
 
