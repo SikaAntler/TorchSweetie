@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 import torch
-import torchvision.transforms as T
+from numpy import ndarray
 from omegaconf import DictConfig
 from PIL import Image
 from torch import Tensor
@@ -13,9 +14,9 @@ from ..utils import TRANSFORMS
 
 @dataclass
 class ClsDataImage:
-    image: Image.Image
+    image: ndarray  # (H, W, 3)
     label: int
-    ori_shape: tuple[int, int]
+    ori_size: tuple[int, int]  # (W, H)
 
 
 @dataclass
@@ -42,16 +43,23 @@ class ClsDataset(Dataset):
 
         self.target_names = target_names
 
-        self.transforms = T.Compose([TRANSFORMS.create(cfg) for cfg in transforms])
+        self.transforms = [TRANSFORMS.create(cfg) for cfg in transforms]
 
     def __len__(self) -> int:
         return len(self.labels)
 
     def __getitem__(self, idx: int) -> ClsDataTensor:
-        image, label = self.images[idx], self.labels[idx]
+        img_file, label = self.images[idx], self.labels[idx]
 
-        image = Image.open(image)
-        data = self.transforms(ClsDataImage(image, label, image.size))
+        image = np.array(Image.open(img_file))
+        H, W = image.shape[:2]
+        if len(image.shape) == 2:
+            image = image.reshape(H, W, 1).repeat(2)
+
+        data = ClsDataImage(image, label, (W, H))
+
+        for t in self.transforms:
+            data = t(data)
 
         return data  # pyright: ignore
 

@@ -4,9 +4,8 @@ from typing import Literal, Sequence
 import cv2
 import numpy as np
 import pandas as pd
-import torchvision.transforms as T
+import torch
 from PIL import Image, ImageFilter
-from torch import nn
 
 from ..data import ClsDataImage, ClsDataTensor
 from ..utils import TRANSFORMS
@@ -29,8 +28,8 @@ __all__ = [
     "RandomSharpen",
     "RandomSwapGrid",
     "RandomHorizontalFlip",
-    "RandomVerticalFlip",
     "RandomTranspose",
+    "RandomVerticalFlip",
     "Resize",
     "ResizeCrop",
     "ResizePad",
@@ -45,14 +44,15 @@ __all__ = [
 
 
 @TRANSFORMS.register()
-class ColorBroken(nn.Module):
+class ColorBroken:
     def __init__(self, channel: Literal["R", "G", "B"], fill: int) -> None:
-        super().__init__()
-
         self.channel = "RGB".index(channel)
         self.fill = fill
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         assert data.image.mode == "RGB"
 
         array = np.array(data.image, np.uint8)
@@ -63,14 +63,15 @@ class ColorBroken(nn.Module):
 
 
 @TRANSFORMS.register()
-class ColorGrading(nn.Module):
+class ColorGrading:
     def __init__(self, factor: list[float]) -> None:
-        super().__init__()
-
         assert len(factor) == 3
         self.factor = factor
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         assert data.image.mode == "RGB"
 
         array = np.array(data.image, dtype=np.float32)
@@ -84,13 +85,14 @@ class ColorGrading(nn.Module):
 
 
 @TRANSFORMS.register()
-class ColorSeperation(nn.Module):
+class ColorSeperation:
     def __init__(self, channel: Literal["R", "G", "B"]) -> None:
-        super().__init__()
-
         self.channel = "RGB".index(channel)
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         assert data.image.mode == "RGB"
 
         data.image = data.image.getchannel(self.channel)
@@ -99,12 +101,10 @@ class ColorSeperation(nn.Module):
 
 
 @TRANSFORMS.register()
-class ContourHighlight(nn.Module):
+class ContourHighlight:
     def __init__(
         self, threshold: int | Literal["otsu"], color: Sequence[int], thickness: int = 1
     ) -> None:
-        super().__init__()
-
         if (not isinstance(threshold, int)) or (threshold == "otsu"):
             assert KeyError(f"threshold should be integer or `otsu`, not {threshold}")
         self.threshold = threshold
@@ -115,7 +115,10 @@ class ContourHighlight(nn.Module):
 
         self.thickness = thickness
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         array = np.array(data.image, dtype=np.uint8)  # (R, G, B)
         gray = cv2.cvtColor(array, cv2.COLOR_RGB2GRAY)
 
@@ -133,34 +136,36 @@ class ContourHighlight(nn.Module):
 
 
 @TRANSFORMS.register()
-class ConvertImageMode(nn.Module):
+class ConvertImageMode:
     def __init__(self, mode: str) -> None:
-        super().__init__()
-
         self.mode = mode
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         data.image = data.image.convert(self.mode)
 
         return data
 
 
 @TRANSFORMS.register()
-class GaussianBlur(nn.Module):
+class GaussianBlur:
     def __init__(self, radius: int) -> None:
-        super().__init__()
-
         assert radius >= 2
         self.filter = ImageFilter.GaussianBlur(radius)
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         data.image = data.image.filter(self.filter)
 
         return data
 
 
 @TRANSFORMS.register()
-class GridRotation(nn.Module):
+class GridRotation:
     ROTATION_MAP = {
         90: Image.Transpose.ROTATE_90,
         180: Image.Transpose.ROTATE_180,
@@ -168,14 +173,15 @@ class GridRotation(nn.Module):
     }
 
     def __init__(self, grid: int, rotation: Literal[90, 180, 270]) -> None:
-        super().__init__()
-
         assert grid >= 2
         self.grid = grid
 
         self.rotation = self.ROTATION_MAP[rotation]
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         W, H = data.image.size
 
         for j in range(self.grid):
@@ -195,10 +201,8 @@ class GridRotation(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomColorJitter(nn.Module):
+class RandomColorJitter:
     def __init__(self, r: float, g: float, b: float) -> None:
-        super().__init__()
-
         assert 0 <= r <= 1
         self.r = r
 
@@ -208,7 +212,10 @@ class RandomColorJitter(nn.Module):
         assert 0 <= b <= 1
         self.b = b
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         assert data.image.mode == "RGB"
 
         red, green, blue = data.image.split()
@@ -233,10 +240,8 @@ class RandomColorJitter(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomColorJitterByRange(nn.Module):
+class RandomColorJitterByRange:
     def __init__(self, dist_file: str, background: bool, channels: str = "RGB") -> None:
-        super().__init__()
-
         self.color = np.arange(256)
         self.dist = np.load(dist_file)
         self.background = background
@@ -244,7 +249,10 @@ class RandomColorJitterByRange(nn.Module):
         assert set(channels).issubset("RGB")
         self.channels = channels
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         assert data.image.mode == "RGB"
 
         array = np.array(data.image, dtype=np.uint8)
@@ -273,17 +281,18 @@ class RandomColorJitterByRange(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomGaussianBlur(nn.Module):
+class RandomGaussianBlur:
     def __init__(self, radius: int, prob: float) -> None:
-        super().__init__()
-
         assert radius >= 2
         self.filter = ImageFilter.GaussianBlur(radius)
 
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         if random.random() <= self.prob:
             data.image = data.image.filter(self.filter)
 
@@ -291,10 +300,8 @@ class RandomGaussianBlur(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomGaussianBlurClasswise(nn.Module):
+class RandomGaussianBlurClasswise:
     def __init__(self, csv_file: str) -> None:
-        super().__init__()
-
         thresh = pd.read_csv(csv_file)
 
         radius = []
@@ -306,7 +313,10 @@ class RandomGaussianBlurClasswise(nn.Module):
         self.radius = tuple(radius)
         self.prob = tuple(prob)
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         if random.random() <= self.prob[data.label]:
             data.image = data.image.filter(ImageFilter.GaussianBlur(self.radius[data.label]))
 
@@ -314,17 +324,18 @@ class RandomGaussianBlurClasswise(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomGaussianBlurByClarity(nn.Module):
+class RandomGaussianBlurByClarity:
     def __init__(self, radiuses: list[int], csv_file: str) -> None:
-        super().__init__()
-
         self.radiuses = sorted(radiuses, reverse=True)
 
         clarity = pd.read_csv(csv_file)
         self.clarity_min = clarity["min"].to_numpy()
         self.clarity_max = clarity["max"].to_numpy()
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         clarity_min = self.clarity_min[data.label]
         clarity_max = self.clarity_max[data.label]
 
@@ -358,17 +369,18 @@ class RandomGaussianBlurByClarity(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomGrid(nn.Module):
+class RandomGrid:
     def __init__(self, grid: int, prob: float) -> None:
-        super().__init__()
-
         assert grid >= 2
         self.grid = grid
 
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         if random.random() > self.prob:
             return data
 
@@ -400,7 +412,7 @@ class RandomGrid(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomGridRotation(nn.Module):
+class RandomGridRotation:
     ROTATION_MAP = {
         90: Image.Transpose.ROTATE_90,
         180: Image.Transpose.ROTATE_180,
@@ -408,8 +420,6 @@ class RandomGridRotation(nn.Module):
     }
 
     def __init__(self, grid: int, rotation: Literal[90, 180, 270], prob: float) -> None:
-        super().__init__()
-
         assert grid >= 2
         self.grid = grid
 
@@ -418,7 +428,10 @@ class RandomGridRotation(nn.Module):
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         W, H = data.image.size
 
         for j in range(self.grid):
@@ -441,16 +454,17 @@ class RandomGridRotation(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomSharpen(nn.Module):
+class RandomSharpen:
     def __init__(self, prob: float) -> None:
-        super().__init__()
-
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
         self.filter = ImageFilter.SHARPEN()
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         if random.random() <= self.prob:
             data.image = data.image.filter(self.filter)
 
@@ -458,17 +472,18 @@ class RandomSharpen(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomSwapGrid(nn.Module):
+class RandomSwapGrid:
     def __init__(self, grid: int, prob: float) -> None:
-        super().__init__()
-
         assert grid >= 2
         self.grid = grid
 
         assert 0.0 <= prob <= prob
         self.prob = prob
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         if random.random() > self.prob:
             return data
 
@@ -500,24 +515,23 @@ class RandomSwapGrid(nn.Module):
 
 
 @TRANSFORMS.register()
-class RandomHorizontalFlip(T.RandomHorizontalFlip):
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
-        data.image = super().forward(data.image)  # pyright: ignore
+class RandomHorizontalFlip:
+    def __init__(self, p=0.5) -> None:
+        self.p = p
+
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        if random.random() >= self.p:
+            data.image = cv2.flip(data.image, 1)
 
         return data
 
 
 @TRANSFORMS.register()
-class RandomVerticalFlip(T.RandomVerticalFlip):
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
-        data.image = super().forward(data.image)  # pyright: ignore
+class RandomTranspose:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
 
-        return data
-
-
-@TRANSFORMS.register()
-class RandomTranspose(nn.Module):
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def _pil(self, data: ClsDataImage) -> ClsDataImage:
         idx = random.randint(0, 6)
         transpose = Image.Transpose(idx)
 
@@ -527,27 +541,38 @@ class RandomTranspose(nn.Module):
 
 
 @TRANSFORMS.register()
-class Resize(nn.Module):
-    def __init__(self, img_size: int | Sequence[int]) -> None:
-        super().__init__()
+class RandomVerticalFlip:
+    def __init__(self, p=0.5) -> None:
+        self.p = p
 
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        if random.random() >= self.p:
+            data.image = cv2.flip(data.image, 0)
+
+        return data
+
+
+@TRANSFORMS.register()
+class Resize:
+    def __init__(self, img_size: int | Sequence[int]) -> None:
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
             self.img_size = tuple(img_size)
             assert len(self.img_size) == 2
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         data.image = data.image.resize(self.img_size)
 
         return data
 
 
 @TRANSFORMS.register()
-class ResizeCrop(nn.Module):
+class ResizeCrop:
     def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
-        super().__init__()
-
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
@@ -559,7 +584,10 @@ class ResizeCrop(nn.Module):
         else:
             self.pad_value = tuple(pad_value)
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         W, H = data.image.size
         img_w, img_h = self.img_size
 
@@ -582,22 +610,62 @@ class ResizeCrop(nn.Module):
 
 
 @TRANSFORMS.register()
-class ResizePad(nn.Module):
-    def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
-        super().__init__()
-
+class ResizePad:
+    def __init__(
+        self,
+        img_size: int | Sequence[int],
+        pad_value: int | Sequence[int],
+        interpolation: Literal["nearest", "linear", "cubic", "area", "lanczos4"] = "linear",
+    ) -> None:
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
+            assert len(img_size) == 2
             self.img_size = tuple(img_size)
-            assert len(self.img_size) == 2
 
         if isinstance(pad_value, int):
             self.pad_value = pad_value
         else:
-            self.pad_value = tuple(pad_value)
+            assert len(pad_value) == 3
+            self.pad_value = np.array(pad_value, np.uint8).reshape(1, 1, 3)
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+        match interpolation:
+            case "nearest":
+                self.interpolation = cv2.INTER_NEAREST
+            case "linear":
+                self.interpolation = cv2.INTER_LINEAR
+            case "cubic":
+                self.interpolation = cv2.INTER_CUBIC
+            case "area":
+                self.interpolation = cv2.INTER_AREA
+            case "lanczos4":
+                self.interpolation = cv2.INTER_LANCZOS4
+
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        H, W = data.image.shape[:2]
+
+        img_w, img_h = self.img_size
+        new_img = np.ones((img_h, img_w, 3), np.uint8)
+        new_img *= self.pad_value
+
+        ratio_w = img_w / W
+        ratio_h = img_h / H
+        if ratio_w >= ratio_h:
+            w = int(ratio_h * W)
+            image = cv2.resize(data.image, (w, img_h), interpolation=self.interpolation)
+            left = (img_w - w) // 2
+            new_img[:, left : left + w] = image
+        else:
+            h = int(ratio_w * H)
+            image = cv2.resize(data.image, (img_w, h))
+            top = (img_h - h) // 2
+            new_img[top : top + h, :] = image
+
+        data.image = new_img
+
+        return data
+
+    def _pil(self, data) -> ClsDataImage:
         W, H = data.image.size
 
         img_w, img_h = self.img_size
@@ -622,24 +690,45 @@ class ResizePad(nn.Module):
 
 
 @TRANSFORMS.register()
-class ResizeRemain(nn.Module):
-    def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
-        super().__init__()
-
+class ResizeRemain:
+    def __init__(
+        self,
+        img_size: int | Sequence[int],
+        pad_value: int | Sequence[int],
+        interpolation: Literal["nearest", "linear", "cubic", "area", "lanczos4"] = "linear",
+    ) -> None:
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
+            assert len(img_size) == 2
             self.img_size = tuple(img_size)
-            assert len(self.img_size) == 2
 
         if isinstance(pad_value, int):
             self.pad_value = pad_value
         else:
-            self.pad_value = tuple(pad_value)
+            assert len(pad_value) == 3
+            self.pad_value = np.array(pad_value, np.uint8).reshape(1, 1, 3)
 
-        self.resize = ResizePad(img_size, pad_value)
+        self.resizepad = ResizePad(img_size, pad_value, interpolation)
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        H, W = data.image.shape[:2]
+        img_w, img_h = self.img_size
+
+        if W <= img_w and H <= img_h:
+            new_img = np.ones((img_h, img_w, 3), np.uint8)
+            new_img *= self.pad_value
+
+            left = (img_w - W) // 2
+            top = (img_h - H) // 2
+            new_img[top : top + H, left : left + W] = data.image
+            data.image = new_img
+        else:
+            data = self.resizepad(data)
+
+        return data
+
+    def _pil(self, data) -> ClsDataImage:
         width, height = data.image.size
         img_w, img_h = self.img_size
 
@@ -650,35 +739,37 @@ class ResizeRemain(nn.Module):
             new_img.paste(data.image, (left, top))
             data.image = new_img
         else:
-            data = self.resize(data)
+            data = self.resizepad(data)
 
         return data
 
 
 @TRANSFORMS.register()
-class Sharpen(nn.Module):
+class Sharpen:
     def __init__(self) -> None:
-        super().__init__()
-
         self.filter = ImageFilter.SHARPEN()
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         data.image = data.image.filter(self.filter)
 
         return data
 
 
 @TRANSFORMS.register()
-class SplitRotate(nn.Module):
+class SplitRotate:
     def __init__(self, mode: Literal["horizontal", "vertical"]) -> None:
-        super().__init__()
-
         assert mode in ["horizontal", "vertical"], ValueError(
             "argument `lines` must be 1 f argument `mode` is `horizontal` or `vertical`"
         )
         self.mode: Literal["horizontal", "vertical"] = mode
 
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         match self.mode:
             case "horizontal":
                 data.image = self._horizontal(data.image)
@@ -723,16 +814,17 @@ class SplitRotate(nn.Module):
 
 
 @TRANSFORMS.register()
-class StandarizeSize(nn.Module):
+class StandarizeSize:
     def __init__(self, w_mean: float, w_std: float, h_mean: float, h_std: float) -> None:
-        super().__init__()
-
         self.w_mean = w_mean
         self.w_std = w_std
         self.h_mean = h_mean
         self.h_std = h_std
 
-    def forward(self, data: ClsDataTensor) -> ClsDataTensor:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataTensor:
         w = (data.ori_size[0] - self.w_mean) / self.w_std
         h = (data.ori_size[1] - self.h_mean) / self.h_std
         data.ori_size = (w, h)
@@ -741,24 +833,48 @@ class StandarizeSize(nn.Module):
 
 
 @TRANSFORMS.register()
-class ToRGB(nn.Module):
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+class ToRGB:
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        raise NotImplementedError
+
+    def _pil(self, data) -> ClsDataImage:
         data.image = data.image.convert("RGB")
 
         return data
 
 
 @TRANSFORMS.register()
-class ToTensor(T.ToTensor):
+class ToTensor:
     def __call__(self, data: ClsDataImage) -> ClsDataTensor:
-        image = super().__call__(data.image)
+        tensor = torch.from_numpy(data.image).type(torch.float32)
+        tensor /= 255
 
-        return ClsDataTensor(image, data.label, data.ori_shape)
+        # (H, W, 3) -> (3, H, W)
+        tensor = tensor.permute(2, 0, 1)
+        tensor = tensor.contiguous()
+
+        return ClsDataTensor(tensor, data.label, data.ori_size)
 
 
 @TRANSFORMS.register()
-class VerticalRotate(nn.Module):
-    def forward(self, data: ClsDataImage) -> ClsDataImage:
+class VerticalRotate:
+    def __init__(self, direction: Literal["clockwise", "counterclockwise"] = "clockwise") -> None:
+        if direction == "clockwise":
+            self.direction = cv2.ROTATE_90_CLOCKWISE
+        elif direction == "counterclockwise":
+            self.direction = cv2.ROTATE_90_COUNTERCLOCKWISE
+
+    def __call__(self, data: ClsDataImage) -> ClsDataImage:
+        H, W = data.image.shape[:2]
+        assert data.ori_size == (W, H)
+
+        if W > H:
+            data.image = cv2.rotate(data.image, self.direction)
+            data.ori_size = (H, W)
+
+        return data
+
+    def _pil(self, data) -> ClsDataImage:
         W, H = data.image.size
         assert data.ori_shape == (W, H)
 

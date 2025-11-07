@@ -18,6 +18,7 @@ dependencies = [
   "omegaconf",
   "onnx",
   "onnxsim",
+  "opencv-python-headless",
   "pandas",
   "pillow",
   "pypinyin",
