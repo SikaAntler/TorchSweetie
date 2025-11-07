@@ -6,8 +6,9 @@ import onnx
 import onnxsim
 import torch
 from rich import print
-from torch import nn
+from torch import Tensor, nn
 
+from ..data import ClsDataPack
 from ..utils import (
     DIR_B,
     DIR_E,
@@ -20,6 +21,20 @@ from ..utils import (
     get_config,
     load_weights,
 )
+
+
+class ONNXExportWrapper(nn.Module):
+    def __init__(self, model: nn.Module, input_size: tuple[int, int, int, int]) -> None:
+        super().__init__()
+
+        self.model = model
+
+        batch_size, _, H, W = input_size
+        self.targets = torch.LongTensor([0] * batch_size)
+        self.ori_sizes = torch.tensor([(H, W)] * batch_size)
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.model(ClsDataPack(x, self.targets, self.ori_sizes))
 
 
 class ClsExporter:
@@ -70,15 +85,18 @@ class ClsExporter:
         # if half and dynamic_batch_size:
         #     raise Exception("half not compatible with dynamic")
 
+        assert len(input_size) == 4
         x = torch.randn(input_size)
+
+        model = ONNXExportWrapper(self.model, input_size)
 
         if half:
             x = x.half()
-            self.model.half()
+            model.half()
 
         if device != "cpu":
             x = x.cuda()
-            self.model.cuda()
+            model.cuda()
 
         if onnx_file is None:
             f = self.cfg.model.weights.with_suffix(".onnx")
@@ -96,7 +114,7 @@ class ClsExporter:
             dynamic_axes = None
 
         torch.onnx.export(
-            self.model,
+            model,
             x,
             f,  # pyright: ignore
             input_names=[input_name],
@@ -107,8 +125,8 @@ class ClsExporter:
 
         print("Starting to simplify...")
         if simplify:
-            model = onnx.load(f)
-            model, check = onnxsim.simplify(model)
+            onnx_model = onnx.load(f)
+            onnx_model, check = onnxsim.simplify(onnx_model)
             assert check, "assert check failed"
-            onnx.save(model, f)
+            onnx.save(onnx_model, f)
         print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")

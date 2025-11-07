@@ -62,7 +62,7 @@ if __name__ == "__main__":
         nargs="+",
         type=int,
         required=True,
-        help="the input size for dummy input (e.g. 32 3 320 320)",
+        help="the input size for dummy input (B, C, H, W)",
     )
     parser.add_argument(
         "--half",
