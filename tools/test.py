@@ -5,19 +5,23 @@ from torchsweetie.tester import ClsTester
 
 
 def main(cfg) -> None:
+    exp_dir = Path(cfg.exp_dir)
+
+    cfg_file: Path = exp_dir.parent / "config.yaml"
+    if not cfg_file.exists():
+        cfg_file = Path(cfg.cfg_file)
+
     if cfg.best:
         weights = "best-*[0-9].pth"
     elif cfg.last:
         weights = "last-*[0-9].pth"
     else:
         weights = f"epoch-{cfg.epoch}.pth"
-
-    exp_dir = Path.cwd() / cfg.exp_dir
     weights = list(exp_dir.glob(weights))
     assert len(weights) == 1
     weights = weights[0].name
 
-    tester = ClsTester(cfg.cfg_file, cfg.exp_dir, weights)
+    tester = ClsTester(cfg_file, exp_dir, weights)
     tester.test()
     tester.report(cfg.digits)
 
@@ -26,21 +30,20 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument(
-        "--cfg-file",
-        "--cfg",
-        type=str,
-        required=True,
-        help="paht of the config file (relative)",
-    )
-    parser.add_argument(
         "--exp-dir",
         "--exp",
         type=str,
         required=True,
-        help="path of the experimental directory (relative)",
+        help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
+    )
+    parser.add_argument(
+        "--cfg-file",
+        "--cfg",
+        type=str,
+        help="paht of the config file (relative)",
     )
 
-    group_weights = parser.add_mutually_exclusive_group()
+    group_weights = parser.add_mutually_exclusive_group(required=True)
     group_weights.add_argument(
         "--best", action="store_true", help="whether to load the best weights"
     )

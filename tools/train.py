@@ -1,20 +1,16 @@
 from argparse import ArgumentParser
+from pathlib import Path
 
 from torchsweetie.exporter import RetrievalExporter
 from torchsweetie.tester import ClsTester, RetrievalTester
 from torchsweetie.trainer import ClsTrainer
 
-# def main(cfg) -> None:
-#     filename = Path(cfg.cfg_file)
-#     if not filename.is_absolute():
-#         filename = filename.absolute()
-#
-#     # filename = Path.cwd() / "test_report" / "new" / "report.csv"
-#     # print_report._print_new(filename, 3)
-
 
 def main(cfg) -> None:
-    trainer = ClsTrainer(cfg.cfg_file, cfg.run_dir)
+    cfg_file = Path(cfg.cfg_file)
+    run_dir = Path(cfg.run_dir)
+
+    trainer = ClsTrainer(cfg_file, run_dir)
     trainer.train()
 
     if not trainer.accelerator.is_main_process:
@@ -33,19 +29,19 @@ def main(cfg) -> None:
     assert len(weights) == 1
     weights = weights[0].name
 
-    exp_dir = str(trainer.exp_dir.relative_to(trainer.root_dir))
     if cfg.test:
         print(f"\n==================Starting Test==================\n")
 
-        tester = ClsTester(cfg.cfg_file, exp_dir, weights)
+        tester = ClsTester(cfg_file, trainer.exp_dir, weights)
         tester.test()
         tester.report(cfg.digits)
+
     elif cfg.retrieval:
         print(f"\n==================Starting Retrieval==================\n")
 
-        exporter = RetrievalExporter(cfg.cfg_file, exp_dir, weights)
+        exporter = RetrievalExporter(cfg_file, trainer.exp_dir, weights)
         exporter.export()
-        tester = RetrievalTester(cfg.cfg_file, exp_dir, weights)
+        tester = RetrievalTester(cfg_file, trainer.exp_dir, weights)
         tester.test()
         tester.report(exporter.embeddings, exporter.labels, cfg.topk_list, cfg.digits)
 

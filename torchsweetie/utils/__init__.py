@@ -1,5 +1,5 @@
 from .color import *
-from .config import get_config
+from .config import load_config, save_config
 from .preprocessing import split_dataset
 from .print_report import print_report, print_report_old
 from .registry import (
@@ -19,7 +19,8 @@ from .string_utils import display_len, format_string, is_chinese
 from .weight import load_weights
 
 __all__ = [
-    "get_config",
+    "load_config",
+    "save_config",
     "split_dataset",
     "print_report",
     "print_report_old",

@@ -18,7 +18,7 @@ from ..utils import (
     MODELS,
     URL_B,
     URL_E,
-    get_config,
+    load_config,
     load_weights,
 )
 
@@ -38,16 +38,14 @@ class ONNXExportWrapper(nn.Module):
 
 
 class ClsExporter:
-    def __init__(self, cfg_file: str, exp_dir: str, weights: str) -> None:
-        # Get the root path (project path)
-        self.root_dir = Path.cwd()
-
-        # Get the absolute path of config file and load it
-        self.cfg_file = self.root_dir / cfg_file
-        self.cfg = get_config(self.cfg_file)
+    def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
+        # Configuration
+        self.cfg_file = cfg_file.absolute()
+        self.cfg = load_config(self.cfg_file)
+        print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
 
         # Running directory, used to record results and models
-        self.exp_dir = self.root_dir / exp_dir
+        self.exp_dir = exp_dir.absolute()
         assert self.exp_dir.exists()
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
@@ -59,7 +57,7 @@ class ClsExporter:
         # Loss Function (Optional)
         loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
-            loss_weights = self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
+            loss_weights = exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
             load_weights(loss_fn, loss_weights)
             self.model = nn.Sequential(
                 OrderedDict(

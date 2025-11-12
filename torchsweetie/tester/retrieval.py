@@ -7,22 +7,20 @@ from torch import Tensor
 from tqdm import tqdm
 
 from ..data import create_cls_dataloader
-from ..utils import DIR_B, DIR_E, MODELS, SIMILARITY, get_config
+from ..utils import DIR_B, DIR_E, MODELS, SIMILARITY, URL_B, URL_E, load_config
 
 
 class RetrievalTester:
     NCOLS = 100
 
-    def __init__(self, cfg_file: str, exp_dir: str, weights: str) -> None:
-        # Get the root path (project path)
-        self.root_dir = Path.cwd()
-
-        # Get the absolute path of config file and load it
-        self.cfg_file = self.root_dir / cfg_file
-        self.cfg = get_config(self.cfg_file)
+    def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
+        # Configuration
+        self.cfg_file = cfg_file.absolute()
+        self.cfg = load_config(self.cfg_file)
+        print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
 
         # Running directory, used to record results and models
-        self.exp_dir = self.root_dir / exp_dir
+        self.exp_dir = exp_dir.absolute()
         assert self.exp_dir.exists()
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 

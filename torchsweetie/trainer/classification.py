@@ -20,7 +20,10 @@ from ..utils import (
     LR_SCHEDULERS,
     MODELS,
     OPTIMIZERS,
-    get_config,
+    URL_B,
+    URL_E,
+    load_config,
+    save_config,
     seed_all_rng,
 )
 
@@ -28,13 +31,10 @@ from ..utils import (
 class ClsTrainer:
     NCOLS = 100
 
-    def __init__(self, cfg_file: str, run_dir: str) -> None:
-        # Get the root path (project path)
-        self.root_dir = Path.cwd()
-
-        # Get the absolute path of config file and load it
-        self.cfg_file = self.root_dir / cfg_file
-        self.cfg = get_config(self.cfg_file)
+    def __init__(self, cfg_file: Path, run_dir: Path) -> None:
+        # Configuration
+        self.cfg_file = cfg_file.absolute()
+        self.cfg = load_config(self.cfg_file)
 
         # Seed
         seed_all_rng(self.cfg.train.get("seed", 1997), self.cfg.train.get("deterministic", False))
@@ -60,10 +60,14 @@ class ClsTrainer:
         # Running directory, used to record results and models
         # Only executed by the main process
         if self.accelerator.is_main_process:
+            print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
+
             date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.exp_dir = self.root_dir / run_dir / self.cfg_file.stem / date_time
+            self.exp_dir = run_dir.absolute() / self.cfg_file.stem / date_time
             self.exp_dir.mkdir(parents=True)
             print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
+            # Save the config to the parent of experiment directory
+            save_config(self.cfg, self.exp_dir.parent / "config.yaml")
 
         # Model
         model = MODELS.create(self.cfg.model)
