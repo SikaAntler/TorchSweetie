@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.engine import ClsTester, ClsTrainer
+from torchsweetie.engine import ClsTester, ClsTrainer, DetTrainer
 from torchsweetie.exporter import RetrievalExporter
 from torchsweetie.tester import RetrievalTester
 
@@ -10,7 +10,11 @@ def main(cfg) -> None:
     cfg_file = Path(cfg.cfg_file)
     run_dir = Path(cfg.run_dir)
 
-    trainer = ClsTrainer(cfg_file, run_dir)
+    if cfg.task == "classification":
+        trainer = ClsTrainer(cfg_file, run_dir)
+    else:
+        trainer = DetTrainer(cfg_file, run_dir)
+
     trainer.train()
 
     if not trainer.accelerator.is_main_process:
@@ -52,6 +56,12 @@ def main(cfg) -> None:
 if __name__ == "__main__":
     parser = ArgumentParser()
 
+    parser.add_argument(
+        "--task",
+        choices=["classification", "detection"],
+        default="classification",
+        help="type of the training task",
+    )
     parser.add_argument(
         "--cfg-file",
         "--cfg",

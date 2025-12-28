@@ -1,1 +1,11 @@
-from . import convnext, efficientnet, inception, resnet, resnet_sc, swin, vgg, vit  # noqa: F401
+from . import (  # noqa: F401
+    convnext,
+    detectors,
+    efficientnet,
+    inception,
+    resnet,
+    resnet_sc,
+    swin,
+    vgg,
+    vit,
+)
