@@ -2,6 +2,8 @@ from typing import Callable, Sequence
 
 from accelerate.optimizer import AcceleratedOptimizer
 
+from ..utils import SCHEDULERS
+
 
 class LambdaMomentum:
     def __init__(
@@ -55,3 +57,17 @@ class LambdaMomentum:
     def load_state_dict(self, state_dict: dict) -> None:
         self.last_epoch = state_dict["last_epoch"]
         self.base_momentums = state_dict["base_momentums"]
+
+
+@SCHEDULERS.register()
+def YOLOv5Momentum(
+    optimizer: AcceleratedOptimizer, warmup: int, warmup_momentum: float, momentum: float
+):
+    # 拿到initial_momentum
+    def momentum_lambda(step: int) -> float:
+        if step < warmup:
+            return (momentum - warmup_momentum) / warmup * step + warmup_momentum
+
+        return 1.0
+
+    return LambdaMomentum(optimizer, momentum_lambda)

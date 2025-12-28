@@ -1,8 +1,7 @@
-from rich import print
 from torch import nn
 from torch.optim import SGD, AdamW
 
-from ..utils import KEY_B, KEY_E, OPTIMIZERS
+from ..utils import KEY_B, KEY_E, OPTIMIZERS, print_main
 
 
 @OPTIMIZERS.register("AdamW")
@@ -19,7 +18,7 @@ def adamW(
     p0 = params[0]["params"]
     p1 = params[1]["params"]
     p2 = params[2]["params"]
-    print(
+    print_main(
         f"{KEY_B}AdamW{KEY_E} with parameter: "
         f"{len(p0)} weight(decay={weight_decay})"
         f" | {len(p1)} weight(decay=0.0)"

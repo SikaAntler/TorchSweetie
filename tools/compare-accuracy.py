@@ -84,7 +84,7 @@ def compare_accuracy_old(cfg) -> None:
         console.print(string, highlight=False)
 
 
-def compare_accuracy(cfg) -> None:
+def compare_cls_accuracy(cfg) -> None:
     if cfg.aliases is None:
         N = 6  # len(HHMMSS)
     else:
@@ -98,14 +98,14 @@ def compare_accuracy(cfg) -> None:
     table.add_column("", "", justify="right", style="cyan")
 
     data = {}
-    for i, exp_name in enumerate(cfg.exp_list):
+    for i, exp_dir in enumerate(cfg.exp_list):
         if cfg.aliases is None:
-            name = Path(exp_name).name.split("-")[-1]
+            name = Path(exp_dir).name.split("-")[-1]
         else:
             name = cfg.aliases[i]
         table.add_column(name, name, justify="right", width=N)
 
-        report = get_report(exp_name)
+        report = get_report(exp_dir)
 
         if i == 0:
             for idx in report.index:
@@ -137,15 +137,85 @@ def compare_accuracy(cfg) -> None:
     console.print(table)
 
 
-def main(cfg) -> None:
-    if cfg.old:
-        compare_accuracy_old(cfg)
+def compare_det_accuracy(cfg) -> None:
+    if cfg.aliases is None:
+        N = 6
     else:
-        compare_accuracy(cfg)
+        assert len(cfg.exp_list) == len(cfg.aliases), "别名必须与实验对应"
+        N = max(len(a) for a in cfg.aliases)
+
+    D = cfg.digits
+    N = max(N, 2 + D)
+
+    table = Table(title="Compare MeanAveragePrecision", show_footer=True)
+    table.add_column("Index", "Index", justify="left")
+
+    names = []
+    table.add_column("Category", "Category", justify="right", style="cyan")
+
+    data = []
+    for i, exp_dir in enumerate(cfg.exp_list):
+        exp_dir = Path(exp_dir)
+
+        if cfg.aliases is None:
+            name = exp_dir.name.split("-")[-1]
+        else:
+            name = cfg.aliases[i]
+        table.add_column(name, name, justify="right", width=N)
+
+        report = pd.read_csv(exp_dir / "report.csv", header=None)
+
+        for idx, name, value in report.itertuples():
+            if i == 0:
+                names.append(name)
+                data.append([])
+            data[idx].append(value)
+
+    for i, (name, values) in enumerate(zip(names, data)):
+        if i == len(data) - 3:
+            table.add_row()
+
+        format_values = []
+        max_value = max(values)
+        for value in values:
+            if value == max_value:
+                value = round(value, D)
+                format_values.append(f"[bold red]{value:.{D}f}[/bold red]")
+            else:
+                value = round(value, D)
+                format_values.append(f"{value:.{D}f}")
+
+        if i >= len(data) - 3:
+            index = ""
+        else:
+            index = str(i + 1)
+
+        table.add_row(index, name, *format_values)
+
+    console = Console()
+    console.print(table)
+
+
+def main(cfg) -> None:
+    match cfg.task:
+        case "classification":
+            if cfg.old:
+                compare_accuracy_old(cfg)
+            else:
+                compare_cls_accuracy(cfg)
+        case "detection":
+            compare_det_accuracy(cfg)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+
+    parser.add_argument(
+        "--task",
+        choices=["classification", "detection"],
+        default="classification",
+        help="type of the training task",
+    )
 
     parser.add_argument(
         "exp_list",

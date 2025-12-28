@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.engine import ClsTester, ClsTrainer
+from torchsweetie.engine import ClsTester, ClsTrainer, DetTester, DetTrainer
 from torchsweetie.exporter import RetrievalExporter
 from torchsweetie.tester import RetrievalTester
 
@@ -10,7 +10,12 @@ def main(cfg) -> None:
     cfg_file = Path(cfg.cfg_file)
     run_dir = Path(cfg.run_dir)
 
-    trainer = ClsTrainer(cfg_file, run_dir)
+    match cfg.task:
+        case "classification":
+            trainer = ClsTrainer(cfg_file, run_dir)
+        case "detection":
+            trainer = DetTrainer(cfg_file, run_dir)
+
     trainer.train()
 
     if not trainer.accelerator.is_main_process:
@@ -35,7 +40,11 @@ def main(cfg) -> None:
     if cfg.test:
         print("\n==================Starting Test==================\n")
 
-        tester = ClsTester(cfg_file, trainer.exp_dir, weights)
+        match cfg.task:
+            case "classification":
+                tester = ClsTester(cfg_file, trainer.exp_dir, weights)
+            case "detection":
+                tester = DetTester(cfg_file, trainer.exp_dir, weights)
         tester.run()
         tester.report(cfg.digits)
 
@@ -53,12 +62,20 @@ if __name__ == "__main__":
     parser = ArgumentParser()
 
     parser.add_argument(
+        "--task",
+        choices=["classification", "detection"],
+        default="classification",
+        help="type of the training task",
+    )
+
+    parser.add_argument(
         "--cfg-file",
         "--cfg",
         type=str,
         required=True,
         help="path of the config file (relative)",
     )
+
     parser.add_argument(
         "--run-dir",
         "--run",
@@ -92,6 +109,7 @@ if __name__ == "__main__":
         type=int,
         help="digits remain for accuracy when print report after test or retrieval",
     )
+
     parser.add_argument(
         "--topk-list", "--topk", nargs="+", type=int, help="the list of k in topk when retrieval"
     )

@@ -17,7 +17,7 @@ from ..utils import (
     URL_E,
     load_weights,
     load_weights_for_model,
-    print_report,
+    print_cls_report,
 )
 from .runner import RunnerBase
 
@@ -106,4 +106,4 @@ class ClsTester(RunnerBase):
         report.to_csv(filename)
         print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
-        print_report(filename, digits)
+        print_cls_report(filename, digits)

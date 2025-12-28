@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.engine import ClsTester
+from torchsweetie.engine import ClsTester, DetTester
 
 
 def main(cfg) -> None:
@@ -22,13 +22,27 @@ def main(cfg) -> None:
     assert len(weights) == 1
     weights = weights[0].name
 
-    tester = ClsTester(cfg_file, exp_dir, weights)
+    match cfg.task:
+        case "classification":
+            tester = ClsTester(cfg_file, exp_dir, weights)
+        case "detection":
+            iou_threshold = cfg.iou_threshold if cfg.iou_threshold else 0.6
+            max_detection = cfg.max_detection if cfg.max_detection else 300
+            tester = DetTester(cfg_file, exp_dir, weights, iou_threshold, max_detection)
+
     tester.run()
     tester.report(cfg.digits)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+
+    parser.add_argument(
+        "--task",
+        choices=["classification", "detection"],
+        default="classification",
+        help="type of the training task",
+    )
 
     parser.add_argument(
         "--exp-dir",
@@ -54,6 +68,20 @@ if __name__ == "__main__":
         "--last", action="store_true", help="whether to load the last weights"
     )
     group_weights.add_argument("--epoch", type=int, help="which epoch of weights want to load")
+
+    parser.add_argument(
+        "--iou-threshold",
+        "--iou-thresh",
+        type=float,
+        help="iou threshold for post processing (detection only)",
+    )
+
+    parser.add_argument(
+        "--max-detection",
+        "--max-det",
+        type=int,
+        help="max detection for post processing (detection only)",
+    )
 
     parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
 
