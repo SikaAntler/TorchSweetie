@@ -1,4 +1,1 @@
-from . import cls_losses  # noqa: F401
-from .cls_losses import ClsLoss
-
-__all__ = ["ClsLoss"]
+from . import cls_losses, yolov5_loss  # noqa: F401

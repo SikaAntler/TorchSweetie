@@ -12,6 +12,7 @@ license = { file = "LICENSE" }
 dynamic = ["version"]
 dependencies = [
   "accelerate",
+  "faster-coco-eval",
   "matplotlib",
   "natsort",
   "numpy",
@@ -27,6 +28,7 @@ dependencies = [
   "rich",
   "scikit-learn",
   "torch",
+  "torchmetrics",
   "torchvision",
   "tqdm",
 ]

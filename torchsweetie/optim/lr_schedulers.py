@@ -52,3 +52,28 @@ def CosineAnnealingWarmUpLR(
         return (1.0 - end_factor) * factor + end_factor
 
     return LambdaLR(optimizer, lr_lambda)
+
+
+@SCHEDULERS.register()
+def YOLOv5LR(
+    optimizer: Optimizer, num_steps: int, end_factor: float, warmup: int, warmup_bias_lr: float
+) -> LRScheduler:
+    def decay(step: int) -> float:
+        return (1 - step / num_steps) * (1.0 - end_factor) + end_factor
+
+    def normal(step: int) -> float:
+        if step < warmup:
+            return decay(step) * step / warmup
+
+        return decay(step)
+
+    def bias(step: int) -> float:
+        if step < warmup:
+            initial_lr = optimizer.param_groups[2]["initial_lr"]
+            target_lr = initial_lr * decay(step)
+            abs_lr = (target_lr - warmup_bias_lr) / warmup * step + warmup_bias_lr
+            return abs_lr / initial_lr
+
+        return decay(step)
+
+    return LambdaLR(optimizer, [normal, normal, bias])
