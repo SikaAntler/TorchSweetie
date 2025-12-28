@@ -1,4 +1,4 @@
-from . import cls_losses  # noqa: F401
-from .cls_losses import ClsLoss
+from . import cls_losses, yolov5_loss, yolov8_loss  # noqa: F401
+from .tal import TaskAlignedAssigner
 
-__all__ = ["ClsLoss"]
+__all__ = ["TaskAlignedAssigner"]

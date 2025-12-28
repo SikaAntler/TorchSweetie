@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.engine import ClsExporter
+from torchsweetie.engine import ClsExporter, DetExporter
 
 
 def main(cfg) -> None:
@@ -21,20 +21,31 @@ def main(cfg) -> None:
     assert len(weights) == 1
     weights = weights[0].name
 
-    exporter = ClsExporter(cfg_file, exp_dir, weights)
-
-    exporter.export_onnx(
-        tuple(cfg.input_size),
-        cfg.half,
-        cfg.device if cfg.device == "cpu" else int(cfg.device),
-        cfg.onnx_file,
-        cfg.dynamic_batch_size,
-        cfg.simplify,
-    )
+    match cfg.task:
+        case "classification":
+            exporter = ClsExporter(cfg_file, exp_dir, weights)
+            exporter.export_onnx(
+                tuple(cfg.input_size),
+                cfg.half,
+                cfg.device if cfg.device == "cpu" else int(cfg.device),
+                cfg.onnx_file,
+                cfg.dynamic_batch_size,
+                cfg.simplify,
+            )
+        case "detection":
+            exporter = DetExporter(cfg_file, exp_dir, weights)
+            exporter.export_onnx(tuple(cfg.input_size), cfg.onnx_file, cfg.simplify)
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+
+    parser.add_argument(
+        "--task",
+        choices=["classification", "detection"],
+        default="classification",
+        help="type of the training task",
+    )
 
     parser.add_argument(
         "--exp-dir",
@@ -43,6 +54,8 @@ if __name__ == "__main__":
         required=True,
         help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
     )
+
+    # optional
     parser.add_argument(
         "--cfg-file",
         "--cfg",
@@ -67,29 +80,34 @@ if __name__ == "__main__":
         required=True,
         help="the input size for dummy input (B, C, H, W)",
     )
+
     parser.add_argument(
         "--half",
         action="store_true",
         help="the dtype for the input and model",
     )
+
     parser.add_argument(
         "--device",
         type=str,
         required=True,
         help="running device, e.g. cpu or integer for cuda",
     )
+
     parser.add_argument(
         "--onnx-file",
         default=None,
         type=str,
         help="the output onnx file (relative)",
     )
+
     parser.add_argument(
         "--dynamic-batch-size",
         "--dynamic",
         action="store_true",
         help="whether using dynamic batch size",
     )
+
     parser.add_argument(
         "--simplify",
         action="store_true",
