@@ -38,7 +38,9 @@ class ONNXExportWrapper(nn.Module):
 
 
 class ClsExporter:
-    def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
+    def __init__(
+        self, cfg_file: Path, exp_dir: Path, weights: str, requires_loss: bool = True
+    ) -> None:
         # Configuration
         self.cfg_file = cfg_file.absolute()
         self.cfg = load_config(self.cfg_file)
@@ -54,19 +56,20 @@ class ClsExporter:
         self.cfg.model.weights = model_weights
         self.model = MODELS.create(self.cfg.model)
 
-        # Loss Function (Optional)
-        loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
-        if list(loss_fn.parameters()) != []:
-            loss_weights = exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
-            load_weights(loss_fn, loss_weights)
-            self.model = nn.Sequential(
-                OrderedDict(
-                    {
-                        "model": self.model,
-                        "loss": loss_fn,
-                    }
+        # Loss Function
+        if requires_loss:
+            loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
+            if list(loss_fn.parameters()) != []:
+                loss_weights = exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
+                load_weights(loss_fn, loss_weights)
+                self.model = nn.Sequential(
+                    OrderedDict(
+                        {
+                            "model": self.model,
+                            "loss": loss_fn,
+                        }
+                    )
                 )
-            )
 
     def export_onnx(
         self,
