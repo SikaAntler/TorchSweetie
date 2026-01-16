@@ -1,9 +1,12 @@
+import json
 from collections import OrderedDict
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import onnx
 import onnxsim
+import pandas as pd
 import torch
 from rich import print
 from torch import Tensor, nn
@@ -124,10 +127,21 @@ class ClsExporter:
         )
         print(f"Saved the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
 
+        onnx_model = onnx.load(f)
+
         print("Starting to simplify...")
         if simplify:
-            onnx_model = onnx.load(f)
             onnx_model, check = onnxsim.simplify(onnx_model)
             assert check, "assert check failed"
-            onnx.save(onnx_model, f)
         print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
+
+        # Metadata
+        target_names = self.cfg.train_dataloader.dataset.target_names
+        classes = pd.read_csv(target_names, header=None)[0].to_list()
+        names = json.dumps(classes, ensure_ascii=False, indent=2)
+        self.metadata = {"date": datetime.now().isoformat(), "names": names}
+        for k, v in self.metadata.items():
+            meta = onnx_model.metadata_props.add()
+            meta.key, meta.value = k, str(v)
+
+        onnx.save(onnx_model, f)
