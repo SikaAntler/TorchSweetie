@@ -58,6 +58,7 @@ class ClsTester:
         # Target names
         target_names = dataloader_cfg.dataset.target_names
         self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
+        self.labels = list(range(len(self.target_names)))
 
         # Store the labels and predictions
         self.y_true = []
@@ -96,6 +97,7 @@ class ClsTester:
         report = classification_report(
             self.y_true,
             self.y_pred,
+            labels=self.labels,
             target_names=self.target_names,
             output_dict=True,
             zero_division=0.0,  # pyright: ignore
