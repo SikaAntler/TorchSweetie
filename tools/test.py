@@ -17,6 +17,7 @@ def main(cfg) -> None:
         weights = "last-*[0-9].pth"
     else:
         weights = f"epoch-{cfg.epoch}.pth"
+
     weights = list(exp_dir.glob(weights))
     assert len(weights) == 1
     weights = weights[0].name
@@ -40,7 +41,7 @@ if __name__ == "__main__":
         "--cfg-file",
         "--cfg",
         type=str,
-        help="paht of the config file (relative)",
+        help="path of the config file (relative)",
     )
 
     group_weights = parser.add_mutually_exclusive_group(required=True)

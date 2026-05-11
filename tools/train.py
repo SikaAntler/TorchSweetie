@@ -93,4 +93,4 @@ if __name__ == "__main__":
         "--topk-list", "--topk", nargs="+", type=int, help="the list of k in topk when retrieval"
     )
 
-    main(cfg=parser.parse_args())
+    main(parser.parse_args())
