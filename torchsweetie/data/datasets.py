@@ -8,6 +8,7 @@ from omegaconf import DictConfig
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from ..utils import TRANSFORMS
 
@@ -38,18 +39,24 @@ class ClsDataset(Dataset):
         super().__init__()
 
         dataset = pd.read_csv(csv_file, header=None)
-        self.images = dataset[0].to_list()
-        self.labels = dataset[1].to_list()
+        self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
 
-        self.target_names = target_names
+        self.images, self.labels = [], []
+        for img_file, name in dataset.itertuples(False):
+            if name in self.target_names:
+                self.images.append(img_file)
+                self.labels.append(name)
+            else:
+                tqdm.write(f"HINT: {img_file} of {name} is ignored")
 
         self.transforms = [TRANSFORMS.create(cfg) for cfg in transforms]
 
     def __len__(self) -> int:
         return len(self.labels)
 
-    def __getitem__(self, idx: int) -> ClsDataTensor:
-        img_file, label = self.images[idx], self.labels[idx]
+    def __getitem__(self, idx: int) -> ClsDataTensor:  # ty: ignore
+        img_file = self.images[idx]
+        label = self.target_names.index(self.labels[idx])
 
         image = np.array(Image.open(img_file))
         H, W = image.shape[:2]
@@ -61,7 +68,7 @@ class ClsDataset(Dataset):
         for t in self.transforms:
             data = t(data)
 
-        return data  # pyright: ignore
+        return data  # ty: ignore
 
     @staticmethod
     def collate_fn(batch_list: list[ClsDataTensor]) -> ClsDataPack:
