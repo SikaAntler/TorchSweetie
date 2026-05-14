@@ -6,19 +6,7 @@ from torch import Tensor, nn
 from torchvision.models import resnet
 
 from ..data import ClsDataPack
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
-
-__all__ = [
-    "resnet18",
-    "resnet34",
-    "resnet50",
-    "resnet101",
-    "resnet152",
-    "resnext50_32x4d",
-    "resnext101_32x8d",
-    "resnext101_64x4d",
-    "ResNet",
-]
+from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights_for_model
 
 _pretrained_weights = {
     "resnet18": resnet.ResNet18_Weights.DEFAULT,
@@ -122,8 +110,7 @@ def _init_model(model_name: str, num_classes: int, weights: Optional[str] = None
         _model = _resnet_models[model_name]()
         model = ResNet(_model, _num_features[model_name], num_classes)
         if weights is not None:
-            print(f"Loading weights from: {URL_B}{weights}{URL_E}")
-            model.load_state_dict(torch.load(weights, "cpu"), False)
+            load_weights_for_model(model, weights)
 
     return model
 

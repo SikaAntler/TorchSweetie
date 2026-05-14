@@ -1,4 +1,4 @@
-from .color import *
+from .color import DIR_B, DIR_E, KEY_B, KEY_E, URL_B, URL_E
 from .config import load_config, save_config
 from .preprocessing import split_dataset
 from .print_report import print_report, print_report_old
@@ -16,27 +16,4 @@ from .registry import (
 from .seed import seed_all_rng
 from .smart_sort import smart_sort
 from .string_utils import display_len, format_string, is_chinese
-from .weight import load_weights
-
-__all__ = [
-    "load_config",
-    "save_config",
-    "split_dataset",
-    "print_report",
-    "print_report_old",
-    "BATCH_SAMPLERS",
-    "LOSSES",
-    "LR_SCHEDULERS",
-    "MODELS",
-    "OPTIMIZERS",
-    "SIMILARITY",
-    "TRANSFORMS",
-    "UTILS",
-    "Registry",
-    "seed_all_rng",
-    "smart_sort",
-    "display_len",
-    "format_string",
-    "is_chinese",
-    "load_weights",
-]
+from .weight import load_weights, load_weights_for_model
