@@ -18,6 +18,9 @@ def main(cfg) -> None:
 
     print("\n==================Train Finished==================\n")
 
+    if (not cfg.test) and (not cfg.retrieval):
+        return
+
     if cfg.best:
         weights = "best-*[0-9].pth"
     elif cfg.last:

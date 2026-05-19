@@ -32,19 +32,24 @@ class ClsTrainer:
     NCOLS = 100
 
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
-        # Configuration
+        # config
         self.cfg_file = cfg_file.absolute()
         self.cfg = load_config(self.cfg_file)
 
-        # Seed
+        # train
+        self.num_epochs = self.cfg.train.num_epochs
+        self.clip_grad = self.cfg.train.get("clip_grad")
+        if self.clip_grad is not None:
+            self.max_norm = self.clip_grad.max_norm
+            self.norm_type = self.clip_grad.get("norm_type", 2)
+
         seed_all_rng(self.cfg.train.get("seed", 1997), self.cfg.train.get("deterministic", False))
 
-        # Accelerator
-        split_batch = False
-        # TODO: split_batch取值问题：
+        # TODO split_batch取值问题：
         # 如果是默认的False，在多卡时总batch_size会和配置文件不一致
         # 如果是True，有batch_sampler的情况下需要重设为False
         # 考虑到DDP模式下训练结果有别于单卡，batch_size可以不一致
+        split_batch = False
         mixed_precision = self.cfg.train.get("mixed_precision")
         if mixed_precision is None:
             mixed_precision = "no"
@@ -69,18 +74,23 @@ class ClsTrainer:
             # Save the config to the parent of experiment directory
             save_config(self.cfg, self.exp_dir.parent / "config.yaml")
 
-        # Model
+        # val
+        if self.cfg.get("val") is None:
+            self.val_interval = 1
+        else:
+            self.val_interval = self.cfg.val.get("interval", 1)
+
+        # model
         model = MODELS.create(self.cfg.model)
+        if self.cfg.train.get("sync_bn", False):
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        self.model = self.accelerator.prepare_model(model)
 
         # TODO: 需要freeze功能，初步设想是提供一个UTILS函数注册器
         # if self.cfg.train.get("freeze"):
         #     UTILS.create(self.cfg.train.freeze, model)
 
-        # Synchronize BN for DDP mode
-        if self.cfg.train.get("sync_bn", False):
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-
-        # Loss Function
+        # loss
         loss_cfg = self.cfg.loss
         loss_fn: nn.Module = LOSSES.create(loss_cfg)
         if list(loss_fn.parameters()) != []:
@@ -88,42 +98,32 @@ class ClsTrainer:
         else:
             self.loss_params = False
 
-        # Optimizer & LR Scheduler
+        # optimizer
         optimizer = OPTIMIZERS.create(model, self.cfg.optimizer)
-        lr_scheduler_cfg = self.cfg.get("lr_scheduler")
-        if lr_scheduler_cfg is None:
+
+        # accelerate prepare
+        self.model, self.loss_fn, self.optimizer = self.accelerator.prepare(
+            model, loss_fn, optimizer
+        )
+
+        # lr_scheduler
+        if self.cfg.get("lr_scheduler") is None:
             self.lr_scheduler = None
         else:
-            lr_scheduler = LR_SCHEDULERS.create(optimizer, lr_scheduler_cfg)
+            lr_scheduler = LR_SCHEDULERS.create(optimizer, self.cfg.lr_scheduler)
             self.lr_scheduler = self.accelerator.prepare(lr_scheduler)
 
-        # Train & Val DataLoaders
+        # train_dataloader
         train_dataloader = create_cls_dataloader(self.cfg.train_dataloader)
-        val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
+        self.train_dataloader = self.accelerator.prepare(train_dataloader)
 
-        # Prepare All
-        (
-            self.model,
-            self.loss_fn,
-            self.optimizer,
-            self.train_dataloader,
-            self.val_dataloader,
-        ) = self.accelerator.prepare(model, loss_fn, optimizer, train_dataloader, val_dataloader)
-
-        # Train
-        self.num_epochs = self.cfg.train.num_epochs
-        self.clip_grad = self.cfg.train.get("clip_grad")
-        if self.clip_grad is not None:
-            self.max_norm = self.clip_grad.max_norm
-            self.norm_type = self.clip_grad.get("norm_type", 2)
-        # Val
-        val_cfg = self.cfg.get("val")
-        if val_cfg is None:
-            self.val_interval = 1
-            self.val_skip = False
+        # val_dataLoader
+        if self.cfg.get("val_dataloader") is None:
+            self.val_dataloader = None
         else:
-            self.val_interval = self.cfg.val.get("interval", 1)
-            self.val_skip = self.cfg.val.get("skip", False)
+            val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
+            self.val_dataloader = self.accelerator.prepare(val_dataloader)
+
         # Save
         save_cfg = self.cfg.get("save")
         if save_cfg is None:
@@ -157,7 +157,7 @@ class ClsTrainer:
         for self.epoch in range(self.num_epochs):
             self._train_one_epoch()
 
-            if (not self.val_skip) and ((self.epoch + 1) % self.val_interval == 0):
+            if (self.epoch + 1) % self.val_interval == 0:
                 self._val()
 
             if self.accelerator.is_main_process:
@@ -223,6 +223,9 @@ class ClsTrainer:
 
     @torch.no_grad()
     def _val(self) -> None:
+        if self.val_dataloader is None:
+            return
+
         # Setting before validation
         self.model.eval()
         self.loss_fn.eval()
@@ -272,7 +275,7 @@ class ClsTrainer:
             self._save("last")
 
         # Save the best epoch
-        if self.save_best and (self.accuracy > self.best_acc):
+        if self.save_best and (self.accuracy >= self.best_acc):
             (self.exp_dir / f"best-{self.best_epoch}.pth").unlink(missing_ok=True)
             (self.exp_dir / f"best-{self.best_epoch}-loss.pth").unlink(missing_ok=True)
             self.best_acc = self.accuracy
