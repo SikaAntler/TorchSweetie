@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "torchsweetie"
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 authors = [{ name = "Tianhong Liang", email = "lngtnhng97@gmail.com" }]
 description = "A tiny framework based on PyTorch for helping train models like your sweetie."
 readme = "README.md"
