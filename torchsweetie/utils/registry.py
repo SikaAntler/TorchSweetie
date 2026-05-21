@@ -1,18 +1,21 @@
-from typing import Callable
+from collections.abc import Callable, ItemsView, KeysView, ValuesView
+from typing import Any, override
 
 from omegaconf import DictConfig
 from rich import print
 
+type Factory[T] = Callable[..., T]
 
-class Registry:
+
+class Registry[T]:
     def __init__(self, name: str) -> None:
         self._name = name
-        self._module_dict = {}
+        self._module_dict: dict[str, Factory[T]] = {}
 
     def __contains__(self, key: str) -> bool:
         return key in self._module_dict
 
-    def __getitem__(self, key: str) -> Callable:
+    def __getitem__(self, key: str) -> Factory[T]:
         return self._module_dict[key]
 
     def __len__(self) -> int:
@@ -22,33 +25,33 @@ class Registry:
     def name(self) -> str:
         return self._name
 
-    def register(self, name=None) -> Callable:
+    def register(self, name: str | None = None) -> Callable[[Factory[T]], Factory[T]]:
 
-        def _register(cls: Callable) -> Callable:
-            key = cls.__name__ if name is None else name
+        def _register(factory: Factory[T]) -> Factory[T]:
+            key = name or getattr(factory, "__name__", factory.__class__.__name__)
             if key in self._module_dict:
                 print(f"WARNING: `{key}` has already existed!")
-            self._module_dict[key] = cls
-            return cls
+            self._module_dict[key] = factory
+            return factory
 
         return _register
 
-    def create(self, cfg: DictConfig):
+    def create(self, cfg: DictConfig, *args: Any, **kwargs: Any) -> T:
         _cfg = cfg.copy()
         name = _cfg.pop("name")
 
-        return self[name](**_cfg)  # pyright: ignore
+        return self[name](*args, **_cfg, **kwargs)  # ty: ignore
 
-    def get(self, key: str, default=None):
+    def get(self, key: str, default: Factory[T] | None = None) -> Factory[T] | None:
         return self._module_dict.get(key, default)
 
-    def items(self):
+    def items(self) -> ItemsView[str, Factory[T]]:
         return self._module_dict.items()
 
-    def keys(self):
+    def keys(self) -> KeysView[str]:
         return self._module_dict.keys()
 
-    def values(self):
+    def values(self) -> ValuesView[Factory[T]]:
         return self._module_dict.values()
 
 
@@ -60,29 +63,31 @@ TRANSFORMS = Registry("transform")
 UTILS = Registry("utils")
 
 
-class OptimizerRegistry(Registry):
+class OptimizerRegistry[T](Registry[T]):
     def __init__(self, name: str) -> None:
         super().__init__(name)
 
-    def create(self, model, cfg: DictConfig):
+    @override
+    def create(self, cfg: DictConfig, model) -> T:
         _cfg = cfg.copy()
         name = _cfg.pop("name")
 
-        return self[name](model, **_cfg)  # pyright: ignore
+        return self[name](model, **_cfg)  # ty: ignore
 
 
 OPTIMIZERS = OptimizerRegistry("optimizer")
 
 
-class LRSchedulerRegistry(Registry):
+class LRSchedulerRegistry[T](Registry[T]):
     def __init__(self, name: str) -> None:
         super().__init__(name)
 
-    def create(self, optimizer, cfg: DictConfig):
+    @override
+    def create(self, cfg: DictConfig, optimizer) -> T:
         _cfg = cfg.copy()
         name = _cfg.pop("name")
 
-        return self[name](optimizer, **_cfg)  # pyright: ignore
+        return self[name](optimizer, **_cfg)  # ty: ignore
 
 
 LR_SCHEDULERS = LRSchedulerRegistry("lr_scheduler")

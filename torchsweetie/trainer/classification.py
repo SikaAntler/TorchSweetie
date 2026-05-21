@@ -99,7 +99,7 @@ class ClsTrainer:
             self.loss_params = False
 
         # optimizer
-        optimizer = OPTIMIZERS.create(model, self.cfg.optimizer)
+        optimizer = OPTIMIZERS.create(self.cfg.optimizer, model)
 
         # accelerate prepare
         self.model, self.loss_fn, self.optimizer = self.accelerator.prepare(
@@ -110,7 +110,7 @@ class ClsTrainer:
         if self.cfg.get("lr_scheduler") is None:
             self.lr_scheduler = None
         else:
-            lr_scheduler = LR_SCHEDULERS.create(optimizer, self.cfg.lr_scheduler)
+            lr_scheduler = LR_SCHEDULERS.create(self.cfg.lr_scheduler, optimizer)
             self.lr_scheduler = self.accelerator.prepare(lr_scheduler)
 
         # train_dataloader
