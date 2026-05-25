@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Optional
 
 import onnx
-import onnxsim
 import pandas as pd
 import torch
 from rich import print
@@ -93,6 +92,7 @@ class ClsExporter:
         x = torch.randn(input_size)
 
         model = ONNXExportWrapper(self.model, input_size)
+        model = model.eval()
 
         if half:
             x = x.half()
@@ -119,23 +119,17 @@ class ClsExporter:
 
         torch.onnx.export(
             model,
-            x,
-            f,  # pyright: ignore
+            x,  # ty: ignore
+            f,
             input_names=[input_name],
             output_names=[output_name],
             dynamic_axes=dynamic_axes,
+            external_data=False,
         )
         print(f"Saved the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
 
-        onnx_model = onnx.load(f)
-
-        print("Starting to simplify...")
-        if simplify:
-            onnx_model, check = onnxsim.simplify(onnx_model)
-            assert check, "assert check failed"
-        print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
-
         # Metadata
+        onnx_model = onnx.load(f)
         target_names = self.cfg.train_dataloader.dataset.target_names
         classes = pd.read_csv(target_names, header=None)[0].to_list()
         names = json.dumps(classes, ensure_ascii=False, indent=2)
@@ -143,5 +137,14 @@ class ClsExporter:
         for k, v in self.metadata.items():
             meta = onnx_model.metadata_props.add()
             meta.key, meta.value = k, str(v)
-
         onnx.save(onnx_model, f)
+        print(f"Added the {KEY_B}metadata{KEY_E}: {URL_B}{f}{URL_E}")
+
+        if simplify:
+            import onnxslim
+
+            print(f"Starting to slim with onnxslim {onnxslim.__version__}...")
+            onnx_model = onnx.load(f)
+            onnx_model = onnxslim.slim(onnx_model)
+            onnx.save(onnx_model, f)
+            print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")

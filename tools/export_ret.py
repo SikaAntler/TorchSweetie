@@ -66,8 +66,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--device",
+        default="cpu",
         type=str,
-        required=True,
         help="running device, e.g. cpu or integer for cuda",
     )
     parser.add_argument(
