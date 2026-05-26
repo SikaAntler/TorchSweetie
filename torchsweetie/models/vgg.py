@@ -6,11 +6,6 @@ from torchvision.models import VGG, vgg
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
-__all__ = [
-    "vgg16",
-    "vgg19",
-]
-
 SCOPE = "classification"
 
 _pretrained_weights = {

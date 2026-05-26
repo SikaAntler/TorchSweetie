@@ -3,10 +3,6 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LRScheduler
 
 from ..utils import LR_SCHEDULERS
 
-__all__ = [
-    "CosineAnnealingLRWarmUp",
-]
-
 SCOPE = "classification"
 
 

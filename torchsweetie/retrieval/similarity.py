@@ -2,13 +2,6 @@ from torch import Tensor, nn
 
 from ..utils import SIMILARITY
 
-__all__ = [
-    "ChebyshevDistance",
-    "EuclideanDistance",
-    "ManhattanDistance",
-    "CosineSimilarity",
-]
-
 SCOPE = "classification"
 
 

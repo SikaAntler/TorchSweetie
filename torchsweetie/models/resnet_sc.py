@@ -9,13 +9,7 @@ from ..data import ClsDataPack
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
 from .resnet import ResNet
 
-__all__ = [
-    "resnext50_32x4d_sc",
-    "ResNetSC",
-]
-
 SCOPE = "classification"
-
 
 _pretrained_weights = {
     "resnet18": resnet.ResNet18_Weights.DEFAULT,

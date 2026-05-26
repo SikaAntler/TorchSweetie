@@ -27,21 +27,6 @@ from torch import FloatTensor, Tensor, nn
 from ..data import ClsDataPack
 from ..utils import LOSSES
 
-__all__ = [
-    "BalancedSoftmaxLoss",
-    "BCELoss",
-    "BCEWithLogitsLoss",
-    "CenterLoss",
-    "CEWithLinearLoss",
-    "CrossEntropyLoss",
-    "EffectiveNumberLoss",
-    "FocalLoss",
-    "LogitAdjustedLoss",
-    "NormalizedCenterLoss",
-    "ReWeightCELoss",
-    "TauNormalizedLoss",
-]
-
 SCOPE = "classification"
 
 

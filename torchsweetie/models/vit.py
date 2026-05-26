@@ -7,14 +7,6 @@ from torchvision.models import VisionTransformer, vision_transformer
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
-__all__ = [
-    "vit_b_16",
-    "vit_b_32",
-    "vit_l_16",
-    "vit_l_32",
-    "vit_h_14",
-]
-
 SCOPE = "classification"
 
 _pretrained_weights = {

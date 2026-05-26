@@ -6,13 +6,6 @@ from torchvision.models import ConvNeXt, convnext
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
-__all__ = [
-    "convnext_tiny",
-    "convnext_small",
-    "convnext_base",
-    "convnext_large",
-]
-
 SCOPE = "classification"
 
 _pretrained_weights = {

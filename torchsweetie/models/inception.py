@@ -6,10 +6,6 @@ from torchvision.models import Inception3, inception
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
-__all__ = [
-    "inception_v3",
-]
-
 SCOPE = "classification"
 
 _pretrained_weights = {

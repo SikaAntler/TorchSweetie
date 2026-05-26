@@ -3,11 +3,6 @@ from torch.optim import SGD, AdamW
 
 from ..utils import OPTIMIZERS
 
-__all__ = [
-    "adamW",
-    "sgd",
-]
-
 SCOPE = "classification"
 
 _NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]

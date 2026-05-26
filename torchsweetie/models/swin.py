@@ -7,12 +7,6 @@ from torchvision.models import SwinTransformer, swin_transformer
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
 
-__all__ = [
-    "swin_v2_t",
-    "swin_v2_s",
-    "swin_v2_b",
-]
-
 SCOPE = "classification"
 
 _pretrained_weights = {

@@ -6,12 +6,6 @@ from torchvision.models import EfficientNet, efficientnet
 
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
-__all__ = [
-    "efficientnet_v2_s",
-    "efficientnet_v2_m",
-    "efficientnet_v2_l",
-]
-
 SCOPE = "classification"
 
 _pretrained_weights = {
