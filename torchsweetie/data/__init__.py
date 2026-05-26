@@ -6,6 +6,7 @@ from .cls_samplers import (
     SquareRootSampler,
 )
 from .cls_transforms import (
+    ClsTransform,
     ColorBroken,
     ColorGrading,
     ColorSeperation,
@@ -33,6 +34,5 @@ from .cls_transforms import (
     SplitRotate,
     StandarizeSize,
     ToRGB,
-    ToTensor,
     VerticalRotate,
 )

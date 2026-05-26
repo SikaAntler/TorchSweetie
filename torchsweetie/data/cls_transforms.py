@@ -1,11 +1,13 @@
 import random
-from typing import Literal, Sequence
+from abc import ABC, abstractmethod
+from typing import Literal, Sequence, override
 
 import cv2
 import numpy as np
 import pandas as pd
 import torch
 from PIL import Image, ImageFilter
+from torch import nn
 
 from ..data import ClsDataImage, ClsDataTensor
 from ..utils import TRANSFORMS
@@ -13,12 +15,20 @@ from ..utils import TRANSFORMS
 SCOPE = "classfication"
 
 
+class ClsTransform(nn.Module, ABC):
+    @abstractmethod
+    def __call__(self, data: ClsDataImage) -> ClsDataImage: ...
+
+
 @TRANSFORMS.register(scope=SCOPE)
-class ColorBroken:
+class ColorBroken(ClsTransform):
     def __init__(self, channel: Literal["R", "G", "B"], fill: int) -> None:
+        super().__init__()
+
         self.channel = "RGB".index(channel)
         self.fill = fill
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -33,11 +43,14 @@ class ColorBroken:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ColorGrading:
+class ColorGrading(ClsTransform):
     def __init__(self, factor: list[float]) -> None:
+        super().__init__()
+
         assert len(factor) == 3
         self.factor = factor
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -55,10 +68,13 @@ class ColorGrading:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ColorSeperation:
+class ColorSeperation(ClsTransform):
     def __init__(self, channel: Literal["R", "G", "B"]) -> None:
+        super().__init__()
+
         self.channel = "RGB".index(channel)
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -71,10 +87,12 @@ class ColorSeperation:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ContourHighlight:
+class ContourHighlight(ClsTransform):
     def __init__(
         self, threshold: int | Literal["otsu"], color: Sequence[int], thickness: int = 1
     ) -> None:
+        super().__init__()
+
         if (not isinstance(threshold, int)) or (threshold == "otsu"):
             assert KeyError(f"threshold should be integer or `otsu`, not {threshold}")
         self.threshold = threshold
@@ -106,10 +124,13 @@ class ContourHighlight:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ConvertImageMode:
+class ConvertImageMode(ClsTransform):
     def __init__(self, mode: str) -> None:
+        super().__init__()
+
         self.mode = mode
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -120,11 +141,14 @@ class ConvertImageMode:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class GaussianBlur:
+class GaussianBlur(ClsTransform):
     def __init__(self, radius: int) -> None:
+        super().__init__()
+
         assert radius >= 2
         self.filter = ImageFilter.GaussianBlur(radius)
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -135,7 +159,7 @@ class GaussianBlur:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class GridRotation:
+class GridRotation(ClsTransform):
     ROTATION_MAP = {
         90: Image.Transpose.ROTATE_90,
         180: Image.Transpose.ROTATE_180,
@@ -143,11 +167,14 @@ class GridRotation:
     }
 
     def __init__(self, grid: int, rotation: Literal[90, 180, 270]) -> None:
+        super().__init__()
+
         assert grid >= 2
         self.grid = grid
 
         self.rotation = self.ROTATION_MAP[rotation]
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -171,8 +198,10 @@ class GridRotation:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomColorJitter:
+class RandomColorJitter(ClsTransform):
     def __init__(self, r: float, g: float, b: float) -> None:
+        super().__init__()
+
         assert 0 <= r <= 1
         self.r = r
 
@@ -182,6 +211,7 @@ class RandomColorJitter:
         assert 0 <= b <= 1
         self.b = b
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -210,8 +240,10 @@ class RandomColorJitter:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomColorJitterByRange:
+class RandomColorJitterByRange(ClsTransform):
     def __init__(self, dist_file: str, background: bool, channels: str = "RGB") -> None:
+        super().__init__()
+
         self.color = np.arange(256)
         self.dist = np.load(dist_file)
         self.background = background
@@ -219,6 +251,7 @@ class RandomColorJitterByRange:
         assert set(channels).issubset("RGB")
         self.channels = channels
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -251,14 +284,17 @@ class RandomColorJitterByRange:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomGaussianBlur:
+class RandomGaussianBlur(ClsTransform):
     def __init__(self, radius: int, prob: float) -> None:
+        super().__init__()
+
         assert radius >= 2
         self.filter = ImageFilter.GaussianBlur(radius)
 
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -270,8 +306,10 @@ class RandomGaussianBlur:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomGaussianBlurClasswise:
+class RandomGaussianBlurClasswise(ClsTransform):
     def __init__(self, csv_file: str) -> None:
+        super().__init__()
+
         thresh = pd.read_csv(csv_file)
 
         radius = []
@@ -283,6 +321,7 @@ class RandomGaussianBlurClasswise:
         self.radius = tuple(radius)
         self.prob = tuple(prob)
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -294,14 +333,17 @@ class RandomGaussianBlurClasswise:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomGaussianBlurByClarity:
+class RandomGaussianBlurByClarity(ClsTransform):
     def __init__(self, radiuses: list[int], csv_file: str) -> None:
+        super().__init__()
+
         self.radiuses = sorted(radiuses, reverse=True)
 
         clarity = pd.read_csv(csv_file)
         self.clarity_min = clarity["min"].to_numpy()
         self.clarity_max = clarity["max"].to_numpy()
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -339,14 +381,17 @@ class RandomGaussianBlurByClarity:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomGrid:
+class RandomGrid(ClsTransform):
     def __init__(self, grid: int, prob: float) -> None:
+        super().__init__()
+
         assert grid >= 2
         self.grid = grid
 
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -382,7 +427,7 @@ class RandomGrid:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomGridRotation:
+class RandomGridRotation(ClsTransform):
     ROTATION_MAP = {
         90: Image.Transpose.ROTATE_90,
         180: Image.Transpose.ROTATE_180,
@@ -390,6 +435,8 @@ class RandomGridRotation:
     }
 
     def __init__(self, grid: int, rotation: Literal[90, 180, 270], prob: float) -> None:
+        super().__init__()
+
         assert grid >= 2
         self.grid = grid
 
@@ -398,6 +445,7 @@ class RandomGridRotation:
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -424,13 +472,16 @@ class RandomGridRotation:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomSharpen:
+class RandomSharpen(ClsTransform):
     def __init__(self, prob: float) -> None:
+        super().__init__()
+
         assert 0.0 <= prob <= 1.0
         self.prob = prob
 
         self.filter = ImageFilter.SHARPEN()
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -442,14 +493,17 @@ class RandomSharpen:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomSwapGrid:
+class RandomSwapGrid(ClsTransform):
     def __init__(self, grid: int, prob: float) -> None:
+        super().__init__()
+
         assert grid >= 2
         self.grid = grid
 
         assert 0.0 <= prob <= prob
         self.prob = prob
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -485,10 +539,13 @@ class RandomSwapGrid:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomHorizontalFlip:
+class RandomHorizontalFlip(ClsTransform):
     def __init__(self, p=0.5) -> None:
+        super().__init__()
+
         self.p = p
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         if random.random() >= self.p:
             data.image = cv2.flip(data.image, 1)
@@ -497,7 +554,8 @@ class RandomHorizontalFlip:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomTranspose:
+class RandomTranspose(ClsTransform):
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -511,10 +569,13 @@ class RandomTranspose:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class RandomVerticalFlip:
+class RandomVerticalFlip(ClsTransform):
     def __init__(self, p=0.5) -> None:
+        super().__init__()
+
         self.p = p
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         if random.random() >= self.p:
             data.image = cv2.flip(data.image, 0)
@@ -523,14 +584,17 @@ class RandomVerticalFlip:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class Resize:
+class Resize(ClsTransform):
     def __init__(self, img_size: int | Sequence[int]) -> None:
+        super().__init__()
+
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
             self.img_size = tuple(img_size)
             assert len(self.img_size) == 2
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -541,8 +605,10 @@ class Resize:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ResizeCrop:
+class ResizeCrop(ClsTransform):
     def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
+        super().__init__()
+
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
@@ -554,6 +620,7 @@ class ResizeCrop:
         else:
             self.pad_value = tuple(pad_value)
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -580,13 +647,15 @@ class ResizeCrop:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ResizePad:
+class ResizePad(ClsTransform):
     def __init__(
         self,
         img_size: int | Sequence[int],
         pad_value: int | Sequence[int],
         interpolation: Literal["nearest", "linear", "cubic", "area", "lanczos4"] = "linear",
     ) -> None:
+        super().__init__()
+
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
@@ -611,6 +680,7 @@ class ResizePad:
             case "lanczos4":
                 self.interpolation = cv2.INTER_LANCZOS4
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         H, W = data.image.shape[:2]
 
@@ -639,7 +709,7 @@ class ResizePad:
         W, H = data.image.size
 
         img_w, img_h = self.img_size
-        new_img = Image.new(data.image.mode, self.img_size, self.pad_value)  # pyright: ignore
+        new_img = Image.new(data.image.mode, self.img_size, self.pad_value)  # ty: ignore
 
         ratio_w = img_w / W
         ratio_h = img_h / H
@@ -660,13 +730,15 @@ class ResizePad:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ResizeRemain:
+class ResizeRemain(ClsTransform):
     def __init__(
         self,
         img_size: int | Sequence[int],
         pad_value: int | Sequence[int],
         interpolation: Literal["nearest", "linear", "cubic", "area", "lanczos4"] = "linear",
     ) -> None:
+        super().__init__()
+
         if isinstance(img_size, int):
             self.img_size = (img_size, img_size)
         else:
@@ -681,6 +753,7 @@ class ResizeRemain:
 
         self.resizepad = ResizePad(img_size, pad_value, interpolation)
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         H, W = data.image.shape[:2]
         img_w, img_h = self.img_size
@@ -703,7 +776,7 @@ class ResizeRemain:
         img_w, img_h = self.img_size
 
         if width <= img_w and height <= img_h:
-            new_img = Image.new(data.image.mode, self.img_size, self.pad_value)  # pyright: ignore
+            new_img = Image.new(data.image.mode, self.img_size, self.pad_value)  # ty: ignore
             left = (img_w - width) // 2
             top = (img_h - height) // 2
             new_img.paste(data.image, (left, top))
@@ -715,10 +788,13 @@ class ResizeRemain:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class Sharpen:
+class Sharpen(ClsTransform):
     def __init__(self) -> None:
+        super().__init__()
+
         self.filter = ImageFilter.SHARPEN()
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -729,13 +805,16 @@ class Sharpen:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class SplitRotate:
+class SplitRotate(ClsTransform):
     def __init__(self, mode: Literal["horizontal", "vertical"]) -> None:
+        super().__init__()
+
         assert mode in ["horizontal", "vertical"], ValueError(
             "argument `lines` must be 1 f argument `mode` is `horizontal` or `vertical`"
         )
         self.mode: Literal["horizontal", "vertical"] = mode
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -784,13 +863,16 @@ class SplitRotate:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class StandarizeSize:
+class StandarizeSize(ClsTransform):
     def __init__(self, w_mean: float, w_std: float, h_mean: float, h_std: float) -> None:
+        super().__init__()
+
         self.w_mean = w_mean
         self.w_std = w_std
         self.h_mean = h_mean
         self.h_std = h_std
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -803,7 +885,8 @@ class StandarizeSize:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ToRGB:
+class ToRGB(ClsTransform):
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
@@ -814,26 +897,16 @@ class ToRGB:
 
 
 @TRANSFORMS.register(scope=SCOPE)
-class ToTensor:
-    def __call__(self, data: ClsDataImage) -> ClsDataTensor:
-        tensor = torch.from_numpy(data.image).type(torch.float32)
-        tensor /= 255
-
-        # (H, W, 3) -> (3, H, W)
-        tensor = tensor.permute(2, 0, 1)
-        tensor = tensor.contiguous()
-
-        return ClsDataTensor(tensor, data.label, data.ori_size)
-
-
-@TRANSFORMS.register(scope=SCOPE)
-class VerticalRotate:
+class VerticalRotate(ClsTransform):
     def __init__(self, direction: Literal["clockwise", "counterclockwise"] = "clockwise") -> None:
+        super().__init__()
+
         if direction == "clockwise":
             self.direction = cv2.ROTATE_90_CLOCKWISE
         elif direction == "counterclockwise":
             self.direction = cv2.ROTATE_90_COUNTERCLOCKWISE
 
+    @override
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         H, W = data.image.shape[:2]
         assert data.ori_size == (W, H)

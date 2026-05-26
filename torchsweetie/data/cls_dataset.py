@@ -11,6 +11,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from ..utils import TRANSFORMS
+from . import ClsTransform
 
 
 @dataclass
@@ -22,9 +23,9 @@ class ClsDataImage:
 
 @dataclass
 class ClsDataTensor:
-    image: Tensor
+    image: Tensor  # (3, H, W)
     label: int
-    ori_size: tuple
+    ori_size: tuple[int, int]  # (W, H)
 
 
 @dataclass
@@ -51,7 +52,7 @@ class ClsDataset(Dataset):
             else:
                 tqdm.write(f"HINT: {img_file} of {name} is ignored")
 
-        self.transforms = []
+        self.transforms: list[ClsTransform] = []
         for cfg in transforms:
             if "scope" not in cfg:
                 cfg.scope = self.SCOPE
@@ -74,7 +75,7 @@ class ClsDataset(Dataset):
         for t in self.transforms:
             data = t(data)
 
-        return data  # ty: ignore
+        return ClsDataTensor(self.to_tensor(data.image), data.label, data.ori_size)
 
     @staticmethod
     def collate_fn(batch_list: list[ClsDataTensor]) -> ClsDataPack:
@@ -83,3 +84,14 @@ class ClsDataset(Dataset):
         ori_shapes = torch.tensor([b.ori_size for b in batch_list], dtype=torch.float)
 
         return ClsDataPack(images, labels, ori_shapes)
+
+    @staticmethod
+    def to_tensor(image: ndarray) -> Tensor:
+        tensor = torch.from_numpy(image).type(torch.float32)
+        tensor /= 255
+
+        # (H, W, 3) -> (3, H, W)
+        tensor = tensor.permute(2, 0, 1)
+        tensor = tensor.contiguous()
+
+        return tensor
