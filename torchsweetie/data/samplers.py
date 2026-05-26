@@ -17,6 +17,8 @@ __all__ = [
     "ClassBalancedBatchSampler",
 ]
 
+SCOPE = "classification"
+
 
 def divide_labels_into_classes(labels: list[int], num_classes: int):
     labels = np.array(labels)
@@ -49,7 +51,7 @@ class ReSamplerBase(Sampler[int]):
         yield from iter(samplers.tolist())
 
 
-@BATCH_SAMPLERS.register()
+@BATCH_SAMPLERS.register(scope=SCOPE)
 class ClassBalancedSampler(ReSamplerBase):
     def __init__(self, data_source: Sized) -> None:
         super().__init__(data_source)
@@ -60,7 +62,7 @@ class ClassBalancedSampler(ReSamplerBase):
         self._prob_to_weights(prob)
 
 
-@BATCH_SAMPLERS.register()
+@BATCH_SAMPLERS.register(scope=SCOPE)
 class SquareRootSampler(ReSamplerBase):
     def __init__(self, data_source: Sized, dist_file: Union[Path, str]) -> None:
         super().__init__(data_source)
@@ -73,7 +75,7 @@ class SquareRootSampler(ReSamplerBase):
         self._prob_to_weights(prob)
 
 
-@BATCH_SAMPLERS.register()
+@BATCH_SAMPLERS.register(scope=SCOPE)
 class ClassBalancedBatchSampler(Sampler[list[int]]):
     def __init__(
         self,

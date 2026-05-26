@@ -11,6 +11,8 @@ __all__ = [
     "vgg19",
 ]
 
+SCOPE = "classification"
+
 _pretrained_weights = {
     "vgg16": vgg.VGG16_Weights.DEFAULT,
     "vgg19": vgg.VGG19_Weights.DEFAULT,
@@ -50,11 +52,11 @@ def _init_model(model_name: str, num_classes: int, dropout, weights: Optional[st
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vgg16(num_classes: int, dropout: float = 0.5, weights: Optional[str] = None) -> VGG:
     return _init_model("vgg16", num_classes, dropout, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vgg19(num_classes: int, dropout: float = 0.5, weights: Optional[str] = None) -> VGG:
     return _init_model("vgg19", num_classes, dropout, weights)

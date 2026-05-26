@@ -10,6 +10,8 @@ __all__ = [
     "inception_v3",
 ]
 
+SCOPE = "classification"
+
 _pretrained_weights = {
     "inception_v3": inception.Inception_V3_Weights.DEFAULT,
 }
@@ -41,6 +43,6 @@ def _init_inception(model_name: str, num_classes: int, weights: Optional[str] = 
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def inception_v3(num_classes: int, weights: Optional[str] = None) -> Inception3:
     return _init_inception("inception_v3", num_classes, weights)

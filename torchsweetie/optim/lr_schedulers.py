@@ -7,8 +7,10 @@ __all__ = [
     "CosineAnnealingLRWarmUp",
 ]
 
+SCOPE = "classification"
 
-@LR_SCHEDULERS.register()
+
+@LR_SCHEDULERS.register(scope=SCOPE)
 class CosineAnnealingLRWarmUp(LRScheduler):
     def __init__(
         self,

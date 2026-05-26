@@ -42,8 +42,10 @@ __all__ = [
     "VerticalRotate",
 ]
 
+SCOPE = "classfication"
 
-@TRANSFORMS.register()
+
+@TRANSFORMS.register(scope=SCOPE)
 class ColorBroken:
     def __init__(self, channel: Literal["R", "G", "B"], fill: int) -> None:
         self.channel = "RGB".index(channel)
@@ -62,7 +64,7 @@ class ColorBroken:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ColorGrading:
     def __init__(self, factor: list[float]) -> None:
         assert len(factor) == 3
@@ -84,7 +86,7 @@ class ColorGrading:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ColorSeperation:
     def __init__(self, channel: Literal["R", "G", "B"]) -> None:
         self.channel = "RGB".index(channel)
@@ -100,7 +102,7 @@ class ColorSeperation:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ContourHighlight:
     def __init__(
         self, threshold: int | Literal["otsu"], color: Sequence[int], thickness: int = 1
@@ -135,7 +137,7 @@ class ContourHighlight:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ConvertImageMode:
     def __init__(self, mode: str) -> None:
         self.mode = mode
@@ -149,7 +151,7 @@ class ConvertImageMode:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class GaussianBlur:
     def __init__(self, radius: int) -> None:
         assert radius >= 2
@@ -164,7 +166,7 @@ class GaussianBlur:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class GridRotation:
     ROTATION_MAP = {
         90: Image.Transpose.ROTATE_90,
@@ -200,7 +202,7 @@ class GridRotation:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomColorJitter:
     def __init__(self, r: float, g: float, b: float) -> None:
         assert 0 <= r <= 1
@@ -239,7 +241,7 @@ class RandomColorJitter:
         return Image.fromarray(array)
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomColorJitterByRange:
     def __init__(self, dist_file: str, background: bool, channels: str = "RGB") -> None:
         self.color = np.arange(256)
@@ -280,7 +282,7 @@ class RandomColorJitterByRange:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomGaussianBlur:
     def __init__(self, radius: int, prob: float) -> None:
         assert radius >= 2
@@ -299,7 +301,7 @@ class RandomGaussianBlur:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomGaussianBlurClasswise:
     def __init__(self, csv_file: str) -> None:
         thresh = pd.read_csv(csv_file)
@@ -323,7 +325,7 @@ class RandomGaussianBlurClasswise:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomGaussianBlurByClarity:
     def __init__(self, radiuses: list[int], csv_file: str) -> None:
         self.radiuses = sorted(radiuses, reverse=True)
@@ -368,7 +370,7 @@ class RandomGaussianBlurByClarity:
         return clarity.item()
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomGrid:
     def __init__(self, grid: int, prob: float) -> None:
         assert grid >= 2
@@ -411,7 +413,7 @@ class RandomGrid:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomGridRotation:
     ROTATION_MAP = {
         90: Image.Transpose.ROTATE_90,
@@ -453,7 +455,7 @@ class RandomGridRotation:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomSharpen:
     def __init__(self, prob: float) -> None:
         assert 0.0 <= prob <= 1.0
@@ -471,7 +473,7 @@ class RandomSharpen:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomSwapGrid:
     def __init__(self, grid: int, prob: float) -> None:
         assert grid >= 2
@@ -514,7 +516,7 @@ class RandomSwapGrid:
         return left, top, right, bottom
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomHorizontalFlip:
     def __init__(self, p=0.5) -> None:
         self.p = p
@@ -526,7 +528,7 @@ class RandomHorizontalFlip:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomTranspose:
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
@@ -540,7 +542,7 @@ class RandomTranspose:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class RandomVerticalFlip:
     def __init__(self, p=0.5) -> None:
         self.p = p
@@ -552,7 +554,7 @@ class RandomVerticalFlip:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class Resize:
     def __init__(self, img_size: int | Sequence[int]) -> None:
         if isinstance(img_size, int):
@@ -570,7 +572,7 @@ class Resize:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ResizeCrop:
     def __init__(self, img_size: int | Sequence[int], pad_value: int | Sequence[int]) -> None:
         if isinstance(img_size, int):
@@ -609,7 +611,7 @@ class ResizeCrop:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ResizePad:
     def __init__(
         self,
@@ -689,7 +691,7 @@ class ResizePad:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ResizeRemain:
     def __init__(
         self,
@@ -744,7 +746,7 @@ class ResizeRemain:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class Sharpen:
     def __init__(self) -> None:
         self.filter = ImageFilter.SHARPEN()
@@ -758,7 +760,7 @@ class Sharpen:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class SplitRotate:
     def __init__(self, mode: Literal["horizontal", "vertical"]) -> None:
         assert mode in ["horizontal", "vertical"], ValueError(
@@ -813,7 +815,7 @@ class SplitRotate:
         return new_img
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class StandarizeSize:
     def __init__(self, w_mean: float, w_std: float, h_mean: float, h_std: float) -> None:
         self.w_mean = w_mean
@@ -832,7 +834,7 @@ class StandarizeSize:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ToRGB:
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
@@ -843,7 +845,7 @@ class ToRGB:
         return data
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class ToTensor:
     def __call__(self, data: ClsDataImage) -> ClsDataTensor:
         tensor = torch.from_numpy(data.image).type(torch.float32)
@@ -856,7 +858,7 @@ class ToTensor:
         return ClsDataTensor(tensor, data.label, data.ori_size)
 
 
-@TRANSFORMS.register()
+@TRANSFORMS.register(scope=SCOPE)
 class VerticalRotate:
     def __init__(self, direction: Literal["clockwise", "counterclockwise"] = "clockwise") -> None:
         if direction == "clockwise":

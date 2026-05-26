@@ -10,6 +10,7 @@ from ..utils import DIR_B, DIR_E, MODELS, URL_B, URL_E, load_config
 
 
 class RetrievalExporter:
+    SCOPE = "classification"
     NCOLS = 100
 
     def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
@@ -27,6 +28,8 @@ class RetrievalExporter:
         model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
         print(self.cfg.model.weights)
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
         self.model = MODELS.create(self.cfg.model)
         self.model.cuda()
 

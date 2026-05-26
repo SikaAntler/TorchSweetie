@@ -14,6 +14,9 @@ __all__ = [
     "ResNetSC",
 ]
 
+SCOPE = "classification"
+
+
 _pretrained_weights = {
     "resnet18": resnet.ResNet18_Weights.DEFAULT,
     "resnet34": resnet.ResNet34_Weights.DEFAULT,
@@ -119,7 +122,7 @@ def _init_model(
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnext50_32x4d_sc(
     se_features: int, num_classes: int, weights: Optional[str] = None
 ) -> ResNetSC:

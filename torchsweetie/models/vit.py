@@ -15,6 +15,8 @@ __all__ = [
     "vit_h_14",
 ]
 
+SCOPE = "classification"
+
 _pretrained_weights = {
     "vit_b_16": vision_transformer.ViT_B_16_Weights.DEFAULT,
     "vit_b_32": vision_transformer.ViT_B_32_Weights.DEFAULT,
@@ -66,26 +68,26 @@ def _init_model(
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vit_b_16(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
     return _init_model("vit_b_16", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vit_b_32(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
     return _init_model("vit_b_32", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vit_l_16(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
     return _init_model("vit_l_16", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vit_l_32(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
     return _init_model("vit_l_32", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def vit_h_14(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
     return _init_model("vit_h_14", num_classes, weights)

@@ -25,10 +25,14 @@ class Registry[T]:
     def name(self) -> str:
         return self._name
 
-    def register(self, name: str | None = None) -> Callable[[Factory[T]], Factory[T]]:
+    def register(
+        self, name: str | None = None, scope: str | None = None
+    ) -> Callable[[Factory[T]], Factory[T]]:
 
         def _register(factory: Factory[T]) -> Factory[T]:
             key = name or getattr(factory, "__name__", factory.__class__.__name__)
+            if scope:
+                key = f"{scope}/{key}"
             if key in self._module_dict:
                 print(f"WARNING: `{key}` has already existed!")
             self._module_dict[key] = factory
@@ -39,8 +43,10 @@ class Registry[T]:
     def create(self, cfg: DictConfig, *args: Any, **kwargs: Any) -> T:
         _cfg = cfg.copy()
         name = _cfg.pop("name")
+        scope = _cfg.pop("scope", None)
+        key = f"{scope}/{name}" if scope else name
 
-        return self[name](*args, **_cfg, **kwargs)  # ty: ignore
+        return self[key](*args, **_cfg, **kwargs)  # ty: ignore
 
     def get(self, key: str, default: Factory[T] | None = None) -> Factory[T] | None:
         return self._module_dict.get(key, default)
@@ -71,8 +77,10 @@ class OptimizerRegistry[T](Registry[T]):
     def create(self, cfg: DictConfig, model) -> T:
         _cfg = cfg.copy()
         name = _cfg.pop("name")
+        scope = _cfg.pop("scope", None)
+        key = f"{scope}/{name}" if scope else name
 
-        return self[name](model, **_cfg)  # ty: ignore
+        return self[key](model, **_cfg)  # ty: ignore
 
 
 OPTIMIZERS = OptimizerRegistry("optimizer")
@@ -86,8 +94,10 @@ class LRSchedulerRegistry[T](Registry[T]):
     def create(self, cfg: DictConfig, optimizer) -> T:
         _cfg = cfg.copy()
         name = _cfg.pop("name")
+        scope = _cfg.pop("scope", None)
+        key = f"{scope}/{name}" if scope else name
 
-        return self[name](optimizer, **_cfg)  # ty: ignore
+        return self[key](optimizer, **_cfg)  # ty: ignore
 
 
 LR_SCHEDULERS = LRSchedulerRegistry("lr_scheduler")

@@ -11,6 +11,7 @@ from ..utils import DIR_B, DIR_E, MODELS, SIMILARITY, URL_B, URL_E, load_config
 
 
 class RetrievalTester:
+    SCOPE = "classification"
     NCOLS = 100
 
     def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
@@ -27,6 +28,8 @@ class RetrievalTester:
         # Model
         model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
         self.model = MODELS.create(self.cfg.model)
         self.model.cuda()
 
@@ -40,6 +43,8 @@ class RetrievalTester:
         target_names = dataloader_cfg.dataset.target_names
         self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
 
+        if "scope" not in self.cfg.similarity:
+            self.cfg.similarity.scope = self.SCOPE
         self.similarity_fn = SIMILARITY.create(self.cfg.similarity)
 
         # Store the embeddings output by model

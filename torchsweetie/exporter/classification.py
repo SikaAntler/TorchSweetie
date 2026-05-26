@@ -40,6 +40,8 @@ class ONNXExportWrapper(nn.Module):
 
 
 class ClsExporter:
+    SCOPE = "classification"
+
     def __init__(
         self, cfg_file: Path, exp_dir: Path, weights: str, requires_loss: bool = True
     ) -> None:
@@ -56,10 +58,14 @@ class ClsExporter:
         # Model
         model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
         self.model = MODELS.create(self.cfg.model)
 
         # Loss Function
         if requires_loss:
+            if "scope" not in self.cfg.loss:
+                self.cfg.loss.scope = self.SCOPE
             loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
             if list(loss_fn.parameters()) != []:
                 loss_weights = exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"

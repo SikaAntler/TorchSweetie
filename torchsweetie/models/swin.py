@@ -13,6 +13,8 @@ __all__ = [
     "swin_v2_b",
 ]
 
+SCOPE = "classification"
+
 _pretrained_weights = {
     "swin_v2_t": swin_transformer.Swin_V2_T_Weights.DEFAULT,
     "swin_v2_s": swin_transformer.Swin_V2_S_Weights.DEFAULT,
@@ -59,16 +61,16 @@ def _init_model(
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def swin_v2_t(num_classes: int, weights: Optional[str] = None) -> SwinTransformer:
     return _init_model("swin_v2_t", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def swin_v2_s(num_classes: int, weights: Optional[str] = None) -> SwinTransformer:
     return _init_model("swin_v2_s", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def swin_v2_b(num_classes: int, weights: Optional[str] = None) -> SwinTransformer:
     return _init_model("swin_v2_b", num_classes, weights)

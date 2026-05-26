@@ -6,6 +6,8 @@ from torchvision.models import resnet
 from ..data import ClsDataPack
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights_for_model
 
+SCOPE = "classification"
+
 _pretrained_weights = {
     "resnet18": resnet.ResNet18_Weights.DEFAULT,
     "resnet34": resnet.ResNet34_Weights.DEFAULT,
@@ -128,46 +130,46 @@ def _init_model(
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnet18(num_classes: int, weights: str | None = None, remap: int | None = None) -> ResNet:
     return _init_model("resnet18", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnet34(num_classes: int, weights: str | None = None, remap: int | None = None) -> ResNet:
     return _init_model("resnet34", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnet50(num_classes: int, weights: str | None = None, remap: int | None = None) -> ResNet:
     return _init_model("resnet50", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnet101(num_classes: int, weights: str | None = None, remap: int | None = None) -> ResNet:
     return _init_model("resnet101", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnet152(num_classes: int, weights: str | None = None, remap: int | None = None) -> ResNet:
     return _init_model("resnet152", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnext50_32x4d(
     num_classes: int, weights: str | None = None, remap: int | None = None
 ) -> ResNet:
     return _init_model("resnext50_32x4d", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnext101_32x8d(
     num_classes: int, weights: str | None = None, remap: int | None = None
 ) -> ResNet:
     return _init_model("resnext101_32x8d", num_classes, weights, remap)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def resnext101_64x4d(
     num_classes: int, weights: str | None = None, remap: int | None = None
 ) -> ResNet:

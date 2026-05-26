@@ -42,8 +42,10 @@ __all__ = [
     "TauNormalizedLoss",
 ]
 
+SCOPE = "classification"
 
-@LOSSES.register()
+
+@LOSSES.register(scope=SCOPE)
 class BalancedSoftmaxLoss(nn.Module):
     """Implementation of the paper 'Balanced Meta-Softmax for Long-Tailed Visual Recognition'."""
 
@@ -65,7 +67,7 @@ class BalancedSoftmaxLoss(nn.Module):
         return self.loss_fn(logits, data)
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class BCELoss(nn.BCELoss):
     # labels_one_hot = torch.zeros_like(logits)
     # labels = labels_one_hot.scatter(1, labels.view(-1, 1), 1)
@@ -74,13 +76,13 @@ class BCELoss(nn.BCELoss):
         return super().forward(input, data.targets)
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class BCEWithLogitsLoss(nn.BCEWithLogitsLoss):
     def forward(self, input: Tensor, data: ClsDataPack) -> Tensor:
         return super().forward(input, data.targets)
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class CenterLoss(nn.Module):
     """Implementation of the paper 'A Discriminative Feature Learning Approach for Deep Face Recognition'."""
 
@@ -112,7 +114,7 @@ class CenterLoss(nn.Module):
             return logits
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class CEWithLinearLoss(nn.Module):
     def __init__(self, in_features: int, num_classes: int) -> None:
         super().__init__()
@@ -131,13 +133,13 @@ class CEWithLinearLoss(nn.Module):
             return logits
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class CrossEntropyLoss(nn.CrossEntropyLoss):
     def forward(self, input: Tensor, data: ClsDataPack) -> Tensor:
         return super().forward(input, data.targets)
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class EffectiveNumberLoss(nn.Module):
     def __init__(self, dist_file: Union[Path, str], beta: float) -> None:
         super().__init__()
@@ -156,7 +158,7 @@ class EffectiveNumberLoss(nn.Module):
         return loss
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class FocalLoss(nn.Module):
     """Implementation of the paper 'Focal Loss for Dense Object Detection'."""
 
@@ -177,7 +179,7 @@ class FocalLoss(nn.Module):
         return loss
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class LogitAdjustedLoss(nn.Module):
     """Implementation of the paper 'LONG-TAIL LEARNING VIA LOGIT ADJUSTMENT'."""
 
@@ -198,7 +200,7 @@ class LogitAdjustedLoss(nn.Module):
         return loss
 
 
-@LOSSES.register("FeatureCenterConstraint")
+@LOSSES.register("FeatureCenterConstraint", SCOPE)
 class NormalizedCenterLoss(nn.Module):
     def __init__(self, in_features: int, num_classes: int, lambda_: float) -> None:
         super().__init__()
@@ -233,7 +235,7 @@ class NormalizedCenterLoss(nn.Module):
             return logits
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class ReWeightCELoss(nn.Module):
     def __init__(self, dist_file: Union[Path, str]) -> None:
         super().__init__()
@@ -250,7 +252,7 @@ class ReWeightCELoss(nn.Module):
         return loss
 
 
-@LOSSES.register()
+@LOSSES.register(scope=SCOPE)
 class TauNormalizedLoss(nn.Module):
     def __init__(self, tau: float) -> None:
         super().__init__()

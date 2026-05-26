@@ -14,6 +14,7 @@ from ..utils import DIR_B, DIR_E, MODELS, URL_B, URL_E, load_config
 
 
 class SimilarSamplesFinder:
+    SCOPE = "classification"
     NCOLS = 100
 
     def __init__(
@@ -36,6 +37,8 @@ class SimilarSamplesFinder:
         # Model
         model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
         self.model = MODELS.create(self.cfg.model)
         self.model.fc = nn.Identity()
         self.model.cuda()

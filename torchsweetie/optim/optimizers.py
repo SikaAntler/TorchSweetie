@@ -8,16 +8,18 @@ __all__ = [
     "sgd",
 ]
 
+SCOPE = "classification"
+
 _NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]
 
 
-@OPTIMIZERS.register("AdamW")
+@OPTIMIZERS.register("AdamW", SCOPE)
 def adamW(model: nn.Module | list[nn.Module], lr: float, weight_decay: float):
     params = _set_weight_decay(model, weight_decay)
     return AdamW(params, lr)
 
 
-@OPTIMIZERS.register("SGD")
+@OPTIMIZERS.register("SGD", SCOPE)
 def sgd(model: nn.Module | list[nn.Module], lr: float, momentum: float, weight_decay: float):
     params = _set_weight_decay(model, weight_decay)
 

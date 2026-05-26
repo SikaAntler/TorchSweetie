@@ -35,6 +35,8 @@ class ClsDataPack:
 
 
 class ClsDataset(Dataset):
+    SCOPE = "classification"
+
     def __init__(self, csv_file: str, target_names: str, transforms: list[DictConfig]) -> None:
         super().__init__()
 
@@ -49,7 +51,11 @@ class ClsDataset(Dataset):
             else:
                 tqdm.write(f"HINT: {img_file} of {name} is ignored")
 
-        self.transforms = [TRANSFORMS.create(cfg) for cfg in transforms]
+        self.transforms = []
+        for cfg in transforms:
+            if "scope" not in cfg:
+                cfg.scope = self.SCOPE
+            self.transforms.append(TRANSFORMS.create(cfg))
 
     def __len__(self) -> int:
         return len(self.labels)

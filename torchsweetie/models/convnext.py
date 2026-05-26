@@ -13,6 +13,8 @@ __all__ = [
     "convnext_large",
 ]
 
+SCOPE = "classification"
+
 _pretrained_weights = {
     "tiny": convnext.ConvNeXt_Tiny_Weights.DEFAULT,
     "small": convnext.ConvNeXt_Small_Weights.DEFAULT,
@@ -57,21 +59,21 @@ def _init_model(model_name: str, num_classes: int, weights: Optional[str] = None
     return model
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def convnext_tiny(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("tiny", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def convnext_small(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("small", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def convnext_base(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("base", num_classes, weights)
 
 
-@MODELS.register()
+@MODELS.register(scope=SCOPE)
 def convnext_large(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
     return _init_model("large", num_classes, weights)

@@ -29,6 +29,7 @@ from ..utils import (
 
 
 class ClsTrainer:
+    SCOPE = "classification"
     NCOLS = 100
 
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
@@ -81,6 +82,8 @@ class ClsTrainer:
             self.val_interval = self.cfg.val.get("interval", 1)
 
         # model
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
         model = MODELS.create(self.cfg.model)
         if self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
@@ -91,14 +94,17 @@ class ClsTrainer:
         #     UTILS.create(self.cfg.train.freeze, model)
 
         # loss
-        loss_cfg = self.cfg.loss
-        loss_fn: nn.Module = LOSSES.create(loss_cfg)
+        if "scope" not in self.cfg.loss:
+            self.cfg.loss.scope = self.SCOPE
+        loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
             self.loss_params = True
         else:
             self.loss_params = False
 
         # optimizer
+        if "scope" not in self.cfg.optimizer:
+            self.cfg.optimizer.scope = self.SCOPE
         optimizer = OPTIMIZERS.create(self.cfg.optimizer, model)
 
         # accelerate prepare
@@ -110,6 +116,8 @@ class ClsTrainer:
         if self.cfg.get("lr_scheduler") is None:
             self.lr_scheduler = None
         else:
+            if "scope" not in self.cfg.lr_scheduler:
+                self.cfg.lr_scheduler.scope = self.SCOPE
             lr_scheduler = LR_SCHEDULERS.create(self.cfg.lr_scheduler, optimizer)
             self.lr_scheduler = self.accelerator.prepare(lr_scheduler)
 

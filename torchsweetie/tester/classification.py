@@ -22,6 +22,7 @@ from ..utils import (
 
 
 class ClsTester:
+    SCOPE = "classification"
     NCOLS = 100
 
     def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
@@ -38,10 +39,14 @@ class ClsTester:
         # Model
         model_weights = self.exp_dir / weights
         self.cfg.model.weights = model_weights
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
         self.model = MODELS.create(self.cfg.model)
         self.model.cuda()
 
         # Loss Function (Optional)
+        if "scope" not in self.cfg.loss:
+            self.cfg.loss.scope = self.SCOPE
         loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
         if list(loss_fn.parameters()) != []:
             loss_weights = self.exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"

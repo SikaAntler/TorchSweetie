@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader
 from ..utils import BATCH_SAMPLERS
 from .datasets import ClsDataset
 
+SCOPE = "classification"
+
 
 def create_cls_dataloader(cfg: DictConfig) -> DataLoader:
     dataset = ClsDataset(**cfg.dataset)
@@ -17,6 +19,8 @@ def create_cls_dataloader(cfg: DictConfig) -> DataLoader:
 
     batch_sampler_cfg = cfg.get("batch_sampler")
     if batch_sampler_cfg is not None:
+        if "scope" not in batch_sampler_cfg:
+            batch_sampler_cfg.scope = SCOPE
         batch_sampler = BATCH_SAMPLERS.create(batch_sampler_cfg)
         dataloader = DataLoader(
             dataset,
