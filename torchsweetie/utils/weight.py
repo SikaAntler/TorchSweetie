@@ -4,7 +4,7 @@ import torch
 from rich import print
 from torch import nn
 
-from .color import URL_B, URL_E
+from . import URL_B, URL_E
 
 
 def load_weights(

@@ -1,11 +1,11 @@
-from .dataloaders import create_cls_dataloader
-from .datasets import ClsDataImage, ClsDataPack, ClsDataset, ClsDataTensor
-from .samplers import (
+from .cls_dataloader import create_cls_dataloader
+from .cls_dataset import ClsDataImage, ClsDataPack, ClsDataset, ClsDataTensor
+from .cls_samplers import (
     ClassBalancedBatchSampler,
     ReSamplerBase,
     SquareRootSampler,
 )
-from .transforms import (
+from .cls_transforms import (
     ColorBroken,
     ColorGrading,
     ColorSeperation,

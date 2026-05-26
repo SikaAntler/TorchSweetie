@@ -5,7 +5,7 @@ from typing import Union
 import pandas as pd
 from rich import print
 
-from .smart_sort import smart_sort
+from . import smart_sort
 
 
 def split_dataset(

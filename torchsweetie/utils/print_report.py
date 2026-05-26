@@ -14,7 +14,7 @@ def get_report(filename: Path) -> pd.DataFrame:
 
 
 def print_report_old(filename: Path, digits: int) -> None:
-    from .string_utils import display_len, format_string
+    from . import display_len, format_string
 
     # 计算最长类名
     W = 0

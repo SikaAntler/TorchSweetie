@@ -7,7 +7,7 @@ from torchvision.models import resnet
 
 from ..data import ClsDataPack
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
-from .resnet import ResNet
+from . import ResNet
 
 SCOPE = "classification"
 

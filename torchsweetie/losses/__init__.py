@@ -1,4 +1,4 @@
-from .classification import (
+from .cls_losses import (
     BalancedSoftmaxLoss,
     BCELoss,
     BCEWithLogitsLoss,

@@ -1,2 +1,2 @@
-from .classification import ClsTester
-from .retrieval import RetrievalTester
+from .cls_tester import ClsTester
+from .retrieval_tester import RetrievalTester

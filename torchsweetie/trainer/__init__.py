@@ -1,1 +1,1 @@
-from .classification import ClsTrainer
+from .cls_trainer import ClsTrainer
