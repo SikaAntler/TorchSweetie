@@ -2,7 +2,7 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 
 from ..utils import BATCH_SAMPLERS
-from . import ClsDataset
+from .cls_dataset import ClsDataset
 
 SCOPE = "classification"
 

@@ -1,5 +1,4 @@
 import random
-from abc import ABC, abstractmethod
 from typing import Literal, Sequence, override
 
 import cv2
@@ -9,15 +8,10 @@ import torch
 from PIL import Image, ImageFilter
 from torch import nn
 
-from ..data import ClsDataImage, ClsDataTensor
 from ..utils import TRANSFORMS
+from .cls_datastructs import ClsDataImage, ClsDataTensor, ClsTransform
 
 SCOPE = "classfication"
-
-
-class ClsTransform(nn.Module, ABC):
-    @abstractmethod
-    def __call__(self, data: ClsDataImage) -> ClsDataImage: ...
 
 
 @TRANSFORMS.register(scope=SCOPE)

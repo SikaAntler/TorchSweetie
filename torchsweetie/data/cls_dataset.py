@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import numpy as np
 import pandas as pd
 import torch
@@ -11,28 +9,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from ..utils import TRANSFORMS
-from . import ClsTransform
-
-
-@dataclass
-class ClsDataImage:
-    image: ndarray  # (H, W, 3)
-    label: int
-    ori_size: tuple[int, int]  # (W, H)
-
-
-@dataclass
-class ClsDataTensor:
-    image: Tensor  # (3, H, W)
-    label: int
-    ori_size: tuple[int, int]  # (W, H)
-
-
-@dataclass
-class ClsDataPack:
-    inputs: Tensor
-    targets: Tensor
-    ori_sizes: Tensor
+from .cls_datastructs import ClsDataImage, ClsDataPack, ClsDataTensor, ClsTransform
 
 
 class ClsDataset(Dataset):
