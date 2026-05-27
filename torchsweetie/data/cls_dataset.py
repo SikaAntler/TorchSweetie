@@ -9,7 +9,8 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from ..utils import TRANSFORMS
-from .cls_datastructs import ClsDataImage, ClsDataPack, ClsDataTensor, ClsTransform
+from .cls_datastructs import ClsDataImage, ClsDataPack, ClsDataTensor
+from .cls_transforms import ClsTransform
 
 
 class ClsDataset(Dataset):

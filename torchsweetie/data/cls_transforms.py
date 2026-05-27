@@ -1,4 +1,5 @@
 import random
+from abc import ABC, abstractmethod
 from typing import Literal, Sequence, override
 
 import cv2
@@ -9,9 +10,14 @@ from PIL import Image, ImageFilter
 from torch import nn
 
 from ..utils import TRANSFORMS
-from .cls_datastructs import ClsDataImage, ClsDataTensor, ClsTransform
+from .cls_datastructs import ClsDataImage
 
 SCOPE = "classification"
+
+
+class ClsTransform(nn.Module, ABC):
+    @abstractmethod
+    def __call__(self, data: ClsDataImage) -> ClsDataImage: ...
 
 
 @TRANSFORMS.register(scope=SCOPE)
@@ -870,7 +876,7 @@ class StandarizeSize(ClsTransform):
     def __call__(self, data: ClsDataImage) -> ClsDataImage:
         raise NotImplementedError
 
-    def _pil(self, data) -> ClsDataTensor:
+    def _pil(self, data):
         w = (data.ori_size[0] - self.w_mean) / self.w_std
         h = (data.ori_size[1] - self.h_mean) / self.h_std
         data.ori_size = (w, h)

@@ -1,6 +1,6 @@
 from .cls_dataloader import create_cls_dataloader
 from .cls_dataset import ClsDataset
-from .cls_datastructs import ClsDataImage, ClsDataPack, ClsDataTensor, ClsTransform
+from .cls_datastructs import ClsDataImage, ClsDataPack, ClsDataTensor
 from .cls_samplers import (
     ClassBalancedBatchSampler,
     ReSamplerBase,

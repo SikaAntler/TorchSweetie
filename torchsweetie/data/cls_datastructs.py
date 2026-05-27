@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from numpy import ndarray
-from torch import Tensor, nn
+from torch import Tensor
 
 
 @dataclass
@@ -24,8 +23,3 @@ class ClsDataPack:
     inputs: Tensor
     targets: Tensor
     ori_sizes: Tensor
-
-
-class ClsTransform(nn.Module, ABC):
-    @abstractmethod
-    def __call__(self, data: ClsDataImage) -> ClsDataImage: ...
