@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Iterator, Sized, Union
+from typing import Iterator, Sized
 
 import numpy as np
 import pandas as pd
@@ -57,7 +57,7 @@ class ClassBalancedSampler(ReSamplerBase):
 
 @BATCH_SAMPLERS.register(scope=SCOPE)
 class SquareRootSampler(ReSamplerBase):
-    def __init__(self, data_source: Sized, dist_file: Union[Path, str]) -> None:
+    def __init__(self, data_source: Sized, dist_file: Path | str) -> None:
         super().__init__(data_source)
 
         dist = pd.read_csv(dist_file, header=None, index_col=None)[1].to_numpy()

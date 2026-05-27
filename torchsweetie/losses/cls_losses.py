@@ -16,7 +16,7 @@ In order to uniform naming convention and reduce confusions, there are some rule
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Union, override
+from typing import override
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ class ClsLoss(nn.Module, ABC):
 class BalancedSoftmaxLoss(ClsLoss):
     """Implementation of the paper 'Balanced Meta-Softmax for Long-Tailed Visual Recognition'."""
 
-    def __init__(self, dist_file: Union[Path, str]) -> None:
+    def __init__(self, dist_file: Path | str) -> None:
         super().__init__()
 
         dist = pd.read_csv(dist_file, header=None, index_col=None)[1].to_numpy()
@@ -100,7 +100,7 @@ class CrossEntropyLoss(ClsLoss):
 
 @LOSSES.register(scope=SCOPE)
 class EffectiveNumberLoss(ClsLoss):
-    def __init__(self, dist_file: Union[Path, str], beta: float) -> None:
+    def __init__(self, dist_file: Path | str, beta: float) -> None:
         super().__init__()
 
         dist = pd.read_csv(dist_file, header=None, index_col=None)[1].to_numpy()
@@ -164,7 +164,7 @@ class LogitAdjustedLoss(ClsLoss):
 
 @LOSSES.register(scope=SCOPE)
 class ReWeightCELoss(ClsLoss):
-    def __init__(self, dist_file: Union[Path, str]) -> None:
+    def __init__(self, dist_file: Path | str) -> None:
         super().__init__()
 
         dist = pd.read_csv(dist_file, header=None, index_col=None)[1].to_numpy()

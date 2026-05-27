@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from math import sqrt
 from pathlib import Path
-from typing import Union, override
+from typing import override
 
 import pandas as pd
 import torch
