@@ -145,7 +145,7 @@ class CEWithLinearLoss(ClsWithLogitsLoss):
 #         return F.cross_entropy(self.s * output, targets, weight=self.weight)
 
 
-@LOSSES.register(SCOPE)
+@LOSSES.register(scope=SCOPE)
 class FeatureCenterConstraint(ClsWithLogitsLoss):
     def __init__(self, in_features: int, num_classes: int, lambda_: float) -> None:
         super().__init__()

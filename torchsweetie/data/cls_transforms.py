@@ -11,7 +11,7 @@ from torch import nn
 from ..utils import TRANSFORMS
 from .cls_datastructs import ClsDataImage, ClsDataTensor, ClsTransform
 
-SCOPE = "classfication"
+SCOPE = "classification"
 
 
 @TRANSFORMS.register(scope=SCOPE)
