@@ -7,7 +7,7 @@ However, I found these frameworks to be too heavy for my needs, and it was also 
 After consideration, I concluded that what I really needed was a framework that is lightweight, easy to use and modified.
 
 For the reasons mentioned above, this project was created.
-It is named ==TorchSweetie==, meaning to make PyTorch "sweeter" -- aiming to bring you a more pleasant experience when using it.
+It is named **TorchSweetie**, meaning to make PyTorch "sweeter" -- aiming to bring you a more pleasant experience when using it.
 
 # Installation
 
@@ -20,7 +20,7 @@ You may use any virtual environment manager you prefer, but in the following sec
 ## Create Virtual Environment
 
 ```bash
-$ conda create -n TorchSweetie python=3.12
+$ conda create -n TorchSweetie python=3.14
 $ conda activate TorchSweetie
 ```
 
@@ -31,5 +31,5 @@ Since the project is lightweight and easy to modified, I recommend to install it
 ```bash
 $ git clone https://github.com/SikaAntler/TorchSweetie.git
 $ cd TorchSweetie/
-$ pip install -e . --config-settings editable_mode=strict
+$ pip install -e .
 ```
