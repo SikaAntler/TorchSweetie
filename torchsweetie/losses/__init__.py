@@ -1,14 +1,18 @@
 from .cls_losses import (
     BalancedSoftmaxLoss,
     BCELoss,
-    BCEWithLogitsLoss,
-    CenterLoss,
-    CEWithLinearLoss,
+    ClsLoss,
     CrossEntropyLoss,
     EffectiveNumberLoss,
     FocalLoss,
     LogitAdjustedLoss,
-    NormalizedCenterLoss,
     ReWeightCELoss,
     TauNormalizedLoss,
+)
+from .cls_with_logits_losses import (
+    BCEWithLogitsLoss,
+    CenterLoss,
+    CEWithLinearLoss,
+    ClsWithLogitsLoss,
+    FeatureCenterConstraint,
 )
