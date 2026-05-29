@@ -51,10 +51,8 @@ class ClsTrainer:
         # 如果是True，有batch_sampler的情况下需要重设为False
         # 考虑到DDP模式下训练结果有别于单卡，batch_size可以不一致
         split_batch = False
-        mixed_precision = self.cfg.train.get("mixed_precision")
-        if mixed_precision is None:
-            mixed_precision = "no"
-        else:
+        mixed_precision = self.cfg.train.get("mixed_precision", "no")
+        if mixed_precision != "no":
             print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.accelerator = Accelerator(
             split_batches=split_batch,
@@ -112,9 +110,8 @@ class ClsTrainer:
         )
 
         # lr_scheduler
-        if self.cfg.get("lr_scheduler") is None:
-            self.lr_scheduler = None
-        else:
+        self.lr_scheduler = self.cfg.get("lr_scheduler")
+        if self.lr_scheduler is not None:
             if "scope" not in self.cfg.lr_scheduler:
                 self.cfg.lr_scheduler.scope = self.SCOPE
             lr_scheduler = LR_SCHEDULERS.create(self.cfg.lr_scheduler, optimizer)
@@ -125,15 +122,13 @@ class ClsTrainer:
         self.train_dataloader = self.accelerator.prepare(train_dataloader)
 
         # val_dataLoader
-        if self.cfg.get("val_dataloader") is None:
-            self.val_dataloader = None
-        else:
+        self.val_dataloader = self.cfg.get("val_dataLoader")
+        if self.val_dataloader is not None:
             val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
             self.val_dataloader = self.accelerator.prepare(val_dataloader)
 
         # Save
-        save_cfg = self.cfg.get("save")
-        if save_cfg is None:
+        if self.cfg.get("save") is None:
             self.save_interval = 999
             self.save_last = True
             self.save_best = False
