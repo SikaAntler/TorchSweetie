@@ -16,15 +16,15 @@ from .cls_transforms import ClsTransform
 class ClsDataset(Dataset):
     SCOPE = "classification"
 
-    def __init__(self, csv_file: str, target_names: str, transforms: list[DictConfig]) -> None:
+    def __init__(self, dataset_file: str, classes_file: str, transforms: list[DictConfig]) -> None:
         super().__init__()
 
-        dataset = pd.read_csv(csv_file, header=None)
-        self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
+        dataset = pd.read_csv(dataset_file, header=None)
+        self.classes = pd.read_csv(classes_file, header=None)[0].to_list()
 
         self.images, self.labels = [], []
         for img_file, name in dataset.itertuples(False):
-            if name in self.target_names:
+            if name in self.classes:
                 self.images.append(img_file)
                 self.labels.append(name)
             else:
@@ -41,7 +41,7 @@ class ClsDataset(Dataset):
 
     def __getitem__(self, idx: int) -> ClsDataTensor:  # ty: ignore
         img_file = self.images[idx]
-        label = self.target_names.index(self.labels[idx])
+        label = self.classes.index(self.labels[idx])
 
         image = np.array(Image.open(img_file))
         H, W = image.shape[:2]

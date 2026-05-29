@@ -60,10 +60,10 @@ class ClsTester:
         dataloader_cfg = self.cfg.test_dataloader
         self.dataloader = create_cls_dataloader(dataloader_cfg)
 
-        # Target names
-        target_names = dataloader_cfg.dataset.target_names
-        self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
-        self.labels = list(range(len(self.target_names)))
+        # classes
+        classes_file = dataloader_cfg.dataset.classes_file
+        self.classes = pd.read_csv(classes_file, header=None)[0].to_list()
+        self.labels = list(range(len(self.classes)))
 
         # Store the labels and predictions
         self.y_true = []
@@ -103,7 +103,7 @@ class ClsTester:
             self.y_true,
             self.y_pred,
             labels=self.labels,
-            target_names=self.target_names,
+            target_names=self.classes,
             output_dict=True,
             zero_division=0.0,  # pyright: ignore
         )

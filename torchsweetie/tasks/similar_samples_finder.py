@@ -51,9 +51,9 @@ class SimilarSamplesFinder:
         self.sup_dataloader_cfg.dataset.csv_file = sup_dataset_file
         self.sup_dataloader = create_cls_dataloader(self.sup_dataloader_cfg)
 
-        # Target names
-        target_names = dataloader_cfg.dataset.target_names
-        self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
+        # classes
+        classes_file = dataloader_cfg.dataset.classes_file
+        self.classes = pd.read_csv(classes_file, header=None)[0].to_list()
 
         # Store
         self.features: torch.Tensor | None = None
@@ -92,7 +92,7 @@ class SimilarSamplesFinder:
         sup_dataset: list[tuple[Path, str]] = []
         sup_dataset_file = Path(self.sup_dataloader_cfg.dataset.csv_file)
         for f, n in pd.read_csv(sup_dataset_file, header=None).itertuples(False):
-            if n in self.target_names:
+            if n in self.classes:
                 sup_dataset.append((Path(f), n))
         assert len(sup_dataset) == sup_features.shape[0], (
             f"Target: {len(sup_dataset)}, {sup_features.shape}"
@@ -100,7 +100,7 @@ class SimilarSamplesFinder:
 
         aug_dataset: list[tuple[Path, str]] = []
 
-        for c in self.target_names:
+        for c in self.classes:
             set_only = [(p, n, f) for (p, n), f in zip(dataset, features) if n == c]
             aug_dataset.extend((p, n) for p, n, _ in set_only)
 

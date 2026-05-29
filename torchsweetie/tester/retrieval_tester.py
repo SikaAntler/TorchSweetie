@@ -39,9 +39,9 @@ class RetrievalTester:
         dataloader_cfg = self.cfg.test_dataloader
         self.dataloader = create_cls_dataloader(dataloader_cfg)
 
-        # Target names
-        target_names = dataloader_cfg.dataset.target_names
-        self.target_names = pd.read_csv(target_names, header=None)[0].to_list()
+        # classes
+        classes_file = dataloader_cfg.dataset.classes_file
+        self.classes = pd.read_csv(classes_file, header=None)[0].to_list()
 
         if "scope" not in self.cfg.similarity:
             self.cfg.similarity.scope = self.SCOPE
@@ -81,7 +81,7 @@ class RetrievalTester:
         indices = indices.cpu()
 
         recall_metrics = {}
-        for name in self.target_names:
+        for name in self.classes:
             recall_metrics[name] = {}
             for k in topk_list:
                 recall_metrics[name][k] = []
@@ -89,11 +89,11 @@ class RetrievalTester:
         # (B, K) == (B, 1) -> (B, K), where K is like [True, False, ...]
         recall = labels[indices] == self.labels[:, None]
         for i in range(len(self.labels)):
-            name = self.target_names[self.labels[i]]
+            name = self.classes[self.labels[i]]
             for k in topk_list:
                 recall_metrics[name][k].append(True in recall[i, :k])
         report = []
-        for name in self.target_names:
+        for name in self.classes:
             recall = recall_metrics[name]
             data = [name]
             for k in topk_list:
@@ -106,7 +106,7 @@ class RetrievalTester:
 
         # 计算最长类名
         W = 0
-        for name in self.target_names:
+        for name in self.classes:
             length = self._display_len(name)
             W = max(W, length)
 

@@ -136,8 +136,8 @@ class ClsExporter:
 
         # Metadata
         onnx_model = onnx.load(f)
-        target_names = self.cfg.train_dataloader.dataset.target_names
-        classes = pd.read_csv(target_names, header=None)[0].to_list()
+        classes_file = self.cfg.train_dataloader.dataset.classes_file
+        classes = pd.read_csv(classes_file, header=None)[0].to_list()
         names = json.dumps(classes, ensure_ascii=False, indent=2)
         self.metadata = {"date": datetime.now().isoformat(), "names": names}
         for k, v in self.metadata.items():
