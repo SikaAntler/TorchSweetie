@@ -87,7 +87,6 @@ class ClsTrainer:
         model = MODELS.create(self.cfg.model)
         if self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-        self.model = self.accelerator.prepare_model(model)
 
         # TODO: 需要freeze功能，初步设想是提供一个UTILS函数注册器
         # if self.cfg.train.get("freeze"):
