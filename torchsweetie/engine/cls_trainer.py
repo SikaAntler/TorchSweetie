@@ -11,6 +11,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
+from torch.utils.data import DataLoader
 
 from ..data import ClsDataPack, create_cls_dataloader
 from ..utils import KEY_B, KEY_E, URL_B, URL_E
@@ -23,16 +24,6 @@ class ClsTrainer(TrainerBase):
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
         super().__init__(cfg_file, run_dir, model_scope=self.SCOPE, loss_scope=self.SCOPE)
 
-        # train_dataloader
-        train_dataloader = create_cls_dataloader(self.cfg.train_dataloader)
-        self.train_dataloader = self.accelerator.prepare(train_dataloader)
-
-        # val_dataLoader
-        self.val_dataloader = self.cfg.get("val_dataloader")
-        if self.val_dataloader is not None:
-            val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
-            self.val_dataloader = self.accelerator.prepare(val_dataloader)
-
         # Useful Parameters
         if self.accelerator.is_main_process:
             self.avg_loss = 0.0
@@ -42,6 +33,14 @@ class ClsTrainer(TrainerBase):
             self.results = []
 
         self.register_hooks([])
+
+    @override
+    def build_train_dataloader(self) -> DataLoader:
+        return create_cls_dataloader(self.cfg.train_dataloader)
+
+    @override
+    def build_val_dataloader(self) -> DataLoader:
+        return create_cls_dataloader(self.cfg.val_dataloader)
 
     @override
     def run_step(self) -> None:

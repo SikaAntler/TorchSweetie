@@ -6,6 +6,7 @@ from pathlib import Path
 from accelerate import Accelerator
 from rich import print
 from torch import nn
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ..utils import (
@@ -133,10 +134,18 @@ class TrainerBase(ABC):
             self.cfg.lr_scheduler.scope = lr_scheduler_scope
         lr_scheduler = LR_SCHEDULERS.create(self.cfg.lr_scheduler, optimizer)
 
+        # train_dataloader
+        train_dataloader = self.build_train_dataloader()
+
         # accelerate prepare
-        self.model, self.loss_fn, self.optimizer, self.lr_scheduler = self.accelerator.prepare(
-            model, loss_fn, optimizer, lr_scheduler
+        self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader = (
+            self.accelerator.prepare(model, loss_fn, optimizer, lr_scheduler, train_dataloader)
         )
+
+        # val_dataLoader
+        if self.cfg.get("val_dataloader") is not None:
+            val_dataloader = self.build_val_dataloader()
+            self.val_dataloader = self.accelerator.prepare(val_dataloader)
 
         # Save
         if self.cfg.get("save") is None:
@@ -148,11 +157,16 @@ class TrainerBase(ABC):
             self.save_last = self.cfg.save.get("last", True)
             self.save_best = self.cfg.save.get("best", False)
 
+    @abstractmethod
+    def build_train_dataloader(self) -> DataLoader: ...
+
+    @abstractmethod
+    def build_val_dataloader(self) -> DataLoader: ...
+
     def register_hooks(self, hooks: list[HookBase]) -> None:
         for h in hooks:
             assert isinstance(h, HookBase)
-        h.trainer = weakref.proxy(self)
-
+            h.trainer = weakref.proxy(self)
         self.hooks.extend(hooks)
 
     def train(self) -> None:
