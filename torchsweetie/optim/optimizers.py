@@ -3,18 +3,16 @@ from torch.optim import SGD, AdamW
 
 from ..utils import OPTIMIZERS
 
-SCOPE = "classification"
-
 _NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]
 
 
-@OPTIMIZERS.register("AdamW", SCOPE)
+@OPTIMIZERS.register("AdamW")
 def adamW(model: nn.Module | list[nn.Module], lr: float, weight_decay: float):
     params = _set_weight_decay(model, weight_decay)
     return AdamW(params, lr)
 
 
-@OPTIMIZERS.register("SGD", SCOPE)
+@OPTIMIZERS.register("SGD")
 def sgd(model: nn.Module | list[nn.Module], lr: float, momentum: float, weight_decay: float):
     params = _set_weight_decay(model, weight_decay)
 

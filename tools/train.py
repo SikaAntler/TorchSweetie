@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
+from torchsweetie.engine import ClsTrainer
 from torchsweetie.exporter import RetrievalExporter
 from torchsweetie.tester import ClsTester, RetrievalTester
-from torchsweetie.trainer import ClsTrainer
 
 
 def main(cfg) -> None:
