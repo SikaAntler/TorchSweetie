@@ -15,10 +15,10 @@ from torch.utils.data import DataLoader
 
 from ..data import ClsDataPack, create_cls_dataloader
 from ..utils import KEY_B, KEY_E, URL_B, URL_E
-from .engine import TrainerBase
+from .trainer import Trainer
 
 
-class ClsTrainer(TrainerBase):
+class ClsTrainer(Trainer):
     SCOPE = "classification"
 
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:

@@ -26,8 +26,8 @@ from ..utils import (
 )
 
 
-class HookBase:
-    trainer: TrainerBase
+class TrainerHook:
+    trainer: Trainer
 
     def before_train(self) -> None:
         pass
@@ -45,7 +45,7 @@ class HookBase:
         pass
 
 
-class TrainerBase(ABC):
+class Trainer(ABC):
     def __init__(
         self,
         cfg_file: Path,
@@ -58,7 +58,7 @@ class TrainerBase(ABC):
     ) -> None:
         super().__init__()
 
-        self.hooks: list[HookBase] = []
+        self.hooks: list[TrainerHook] = []
         self.epoch: int = 0
 
         # config
@@ -163,9 +163,9 @@ class TrainerBase(ABC):
     @abstractmethod
     def build_val_dataloader(self) -> DataLoader: ...
 
-    def register_hooks(self, hooks: list[HookBase]) -> None:
+    def register_hooks(self, hooks: list[TrainerHook]) -> None:
         for h in hooks:
-            assert isinstance(h, HookBase)
+            assert isinstance(h, TrainerHook)
             h.trainer = weakref.proxy(self)
         self.hooks.extend(hooks)
 

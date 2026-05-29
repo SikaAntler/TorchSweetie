@@ -1,2 +1,2 @@
 from .cls_trainer import ClsTrainer
-from .engine import HookBase, TrainerBase
+from .trainer import Trainer, TrainerHook
