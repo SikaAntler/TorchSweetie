@@ -6,18 +6,15 @@ from pathlib import Path
 from accelerate import Accelerator
 from rich import print
 from torch import nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
 from ..utils import (
     DIR_B,
     DIR_E,
     KEY_B,
     KEY_E,
-    LOSSES,
-    LR_SCHEDULERS,
-    MODELS,
-    OPTIMIZERS,
     URL_B,
     URL_E,
     load_config,
@@ -26,8 +23,8 @@ from ..utils import (
 )
 
 
-class TrainerHook:
-    trainer: Trainer
+class HookBase:
+    trainer: TrainerBase
 
     def before_train(self) -> None:
         pass
@@ -45,28 +42,17 @@ class TrainerHook:
         pass
 
 
-class Trainer(ABC):
-    def __init__(
-        self,
-        cfg_file: Path,
-        run_dir: Path,
-        *,
-        model_scope: str | None = None,
-        loss_scope: str | None = None,
-        optimizer_scope: str | None = None,
-        lr_scheduler_scope: str | None = None,
-    ) -> None:
+class TrainerBase(ABC):
+    def __init__(self, cfg_file: Path, run_dir: Path) -> None:
         super().__init__()
 
-        self.hooks: list[TrainerHook] = []
-        self.epoch: int = 0
+        self.hooks: list[HookBase] = []
 
         # config
         self.cfg_file = cfg_file.absolute()
         self.cfg = load_config(self.cfg_file)
 
         # train
-        self.num_epochs = self.cfg.train.num_epochs
         self.clip_grad = self.cfg.train.get("clip_grad")
         if self.clip_grad is not None:
             self.max_norm = self.clip_grad.max_norm
@@ -101,84 +87,49 @@ class Trainer(ABC):
             # Save the config to the parent of experiment directory
             save_config(self.cfg, self.exp_dir.parent / "config.yaml")
 
-        # val
-        if self.cfg.get("val") is None:
-            self.val_interval = 1
-        else:
-            self.val_interval = self.cfg.val.get("interval", 1)
+        self.model = self.build_model()
 
-        # model
-        if "scope" not in self.cfg.model:
-            self.cfg.model.scope = model_scope
-        model = MODELS.create(self.cfg.model)
-        if self.cfg.train.get("sync_bn", False):
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+        self.loss_fn = self.build_loss_fn()
 
-        # loss
-        if "scope" not in self.cfg.loss:
-            self.cfg.loss.scope = loss_scope
-        loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
-        if list(loss_fn.parameters()) != []:
-            self.loss_params = True
-        else:
-            self.loss_params = False
+        self.optimizer = self.build_optimizer()
 
-        # optimizer
-        if "scope" not in self.cfg.optimizer:
-            self.cfg.optimizer.scope = optimizer_scope
-        optimizer = OPTIMIZERS.create(self.cfg.optimizer, model)
+        self.lr_scheduler = self.build_lr_scheduler()
 
-        # lr_scheduler
-        self.lr_scheduler = self.cfg.get("lr_scheduler")
-        if "scope" not in self.cfg.lr_scheduler:
-            self.cfg.lr_scheduler.scope = lr_scheduler_scope
-        lr_scheduler = LR_SCHEDULERS.create(self.cfg.lr_scheduler, optimizer)
+        self.train_dataloader = self.build_train_dataloader()
 
-        # train_dataloader
-        train_dataloader = self.build_train_dataloader()
+        self.val_dataloader = self.build_val_dataloader()
 
-        # accelerate prepare
-        self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader = (
-            self.accelerator.prepare(model, loss_fn, optimizer, lr_scheduler, train_dataloader)
-        )
+        self.prepare()
 
-        # val_dataLoader
-        if self.cfg.get("val_dataloader") is not None:
-            val_dataloader = self.build_val_dataloader()
-            self.val_dataloader = self.accelerator.prepare(val_dataloader)
+    @abstractmethod
+    def build_model(self) -> nn.Module: ...
 
-        # Save
-        if self.cfg.get("save") is None:
-            self.save_interval = 999
-            self.save_last = True
-            self.save_best = False
-        else:
-            self.save_interval = self.cfg.save.get("interval", 999)
-            self.save_last = self.cfg.save.get("last", True)
-            self.save_best = self.cfg.save.get("best", False)
+    @abstractmethod
+    def build_loss_fn(self) -> nn.Module: ...
+
+    @abstractmethod
+    def build_optimizer(self) -> Optimizer: ...
+
+    @abstractmethod
+    def build_lr_scheduler(self) -> LRScheduler: ...
 
     @abstractmethod
     def build_train_dataloader(self) -> DataLoader: ...
 
     @abstractmethod
-    def build_val_dataloader(self) -> DataLoader: ...
+    def build_val_dataloader(self) -> DataLoader | None: ...
 
-    def register_hooks(self, hooks: list[TrainerHook]) -> None:
+    @abstractmethod
+    def prepare(self) -> None: ...
+
+    def register_hooks(self, hooks: list[HookBase]) -> None:
         for h in hooks:
-            assert isinstance(h, TrainerHook)
+            assert isinstance(h, HookBase)
             h.trainer = weakref.proxy(self)
         self.hooks.extend(hooks)
 
-    def train(self) -> None:
-        self.before_train()
-
-        for self.epoch in range(self.num_epochs):
-            self.before_step()
-            self.run_step()
-            self.after_backward()
-            self.after_step()
-
-        self.after_train()
+    @abstractmethod
+    def train(self) -> None: ...
 
     def before_train(self) -> None:
         for h in self.hooks:

@@ -1,3 +1,3 @@
 from typing import override
 
-from .trainer import TrainerHook
+from .trainer import HookBase

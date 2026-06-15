@@ -11,18 +11,32 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
+from torch import nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
 from ..data import ClsDataPack, create_cls_dataloader
-from ..utils import KEY_B, KEY_E, URL_B, URL_E
-from .trainer import Trainer
+from ..utils import KEY_B, KEY_E, LOSSES, LR_SCHEDULERS, MODELS, OPTIMIZERS, URL_B, URL_E
+from .trainer import TrainerBase
 
 
-class ClsTrainer(Trainer):
+class ClsTrainer(TrainerBase):
     SCOPE = "classification"
 
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
-        super().__init__(cfg_file, run_dir, model_scope=self.SCOPE, loss_scope=self.SCOPE)
+        super().__init__(cfg_file, run_dir)
+
+        self.epoch: int = 0
+
+        # train
+        self.num_epochs = self.cfg.train.num_epochs
+
+        # val
+        if self.cfg.get("val") is None:
+            self.val_interval = 1
+        else:
+            self.val_interval = self.cfg.val.get("interval", 1)
 
         # Useful Parameters
         if self.accelerator.is_main_process:
@@ -32,15 +46,93 @@ class ClsTrainer(Trainer):
             self.best_epoch = -1
             self.results = []
 
+        # Save
+        if self.cfg.get("save") is None:
+            self.save_interval = 999
+            self.save_last = True
+            self.save_best = False
+        else:
+            self.save_interval = self.cfg.save.get("interval", 999)
+            self.save_last = self.cfg.save.get("last", True)
+            self.save_best = self.cfg.save.get("best", False)
+
         self.register_hooks([])
+
+    @override
+    def build_model(self) -> nn.Module:
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
+
+        model = MODELS.create(self.cfg.model)
+
+        if self.cfg.train.get("sync_bn", False):
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+        return model
+
+    @override
+    def build_loss_fn(self) -> nn.Module:
+        if "scope" not in self.cfg.loss:
+            self.cfg.loss.scope = self.SCOPE
+
+        loss_fn = LOSSES.create(self.cfg.loss)
+
+        if list(loss_fn.parameters()) != []:
+            self.loss_params = True
+        else:
+            self.loss_params = False
+
+        return loss_fn
+
+    @override
+    def build_optimizer(self) -> Optimizer:
+        if "scope" not in self.cfg.optimizer:
+            self.cfg.optimizer.scope = self.SCOPE
+
+        return OPTIMIZERS.create(self.cfg.optimizer, self.model)
+
+    @override
+    def build_lr_scheduler(self) -> LRScheduler:
+        self.lr_scheduler = self.cfg.get("lr_scheduler")
+
+        if "scope" not in self.cfg.lr_scheduler:
+            self.cfg.lr_scheduler.scope = self.SCOPE
+
+        return LR_SCHEDULERS.create(self.cfg.lr_scheduler, self.optimizer)
 
     @override
     def build_train_dataloader(self) -> DataLoader:
         return create_cls_dataloader(self.cfg.train_dataloader)
 
     @override
-    def build_val_dataloader(self) -> DataLoader:
-        return create_cls_dataloader(self.cfg.val_dataloader)
+    def build_val_dataloader(self) -> DataLoader | None:
+        if self.cfg.get("val_dataloader") is None:
+            val_dataloader = None
+        else:
+            val_dataloader = create_cls_dataloader(self.cfg.val_dataloader)
+            val_dataloader = self.accelerator.prepare(val_dataloader)
+
+        return val_dataloader
+
+    @override
+    def prepare(self) -> None:
+        self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader = (
+            self.accelerator.prepare(
+                self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader
+            )
+        )
+
+    @override
+    def train(self) -> None:
+        self.before_train()
+
+        for self.epoch in range(self.num_epochs):
+            self.before_step()
+            self.run_step()
+            self.after_backward()
+            self.after_step()
+
+        self.after_train()
 
     @override
     def run_step(self) -> None:
@@ -96,11 +188,10 @@ class ClsTrainer(Trainer):
     def after_step(self) -> None:
         self._val()
 
-        print(
-            f"Epoch {self.epoch}: avg_loss={KEY_B}{self.avg_loss:.5f}{KEY_E} | accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
-        )
-
         if self.accelerator.is_main_process:
+            print(
+                f"Epoch {self.epoch}: avg_loss={KEY_B}{self.avg_loss:.5f}{KEY_E} | accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
+            )
             self._record()
 
         super().after_step()
@@ -143,7 +234,7 @@ class ClsTrainer(Trainer):
                 progress.update(task, advance=1)
 
         if self.accelerator.is_main_process:
-            self.accuracy = corrects / len(self.val_dataloader.dataset)
+            self.accuracy = corrects / len(self.val_dataloader.dataset)  # ty: ignore
 
     def _record(self) -> None:
         self.results.append((self.epoch, self.avg_loss, self.accuracy))
