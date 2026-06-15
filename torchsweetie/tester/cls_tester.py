@@ -17,6 +17,7 @@ from ..utils import (
     URL_E,
     load_config,
     load_weights,
+    load_weights_for_model,
     print_report,
 )
 
@@ -37,11 +38,12 @@ class ClsTester:
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
         # Model
-        model_weights = self.exp_dir / weights
-        self.cfg.model.weights = model_weights
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
+        self.cfg.model.pop("_weights_", None)
         self.model = MODELS.create(self.cfg.model)
+        model_weights = self.exp_dir / weights
+        load_weights_for_model(self.model, str(model_weights), True)
         self.model.cuda()
 
         # Loss Function (Optional)
@@ -71,10 +73,10 @@ class ClsTester:
 
     @torch.no_grad()
     def test(self) -> None:
-        pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=self.NCOLS)
+        pbar = tqdm(desc="Testing", total=len(self.dataloader), ncols=self.NCOLS)
 
         if len(self.y_true) + len(self.y_pred) != 0:
-            tqdm.write(f"You may run the test twice, since y_true and y_pred are not empty.")
+            tqdm.write("You may run the test twice, since y_true and y_pred are not empty.")
 
         self.model.eval()
         if self.loss_fn is not None:

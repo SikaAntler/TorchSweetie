@@ -17,7 +17,17 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
 from ..data import ClsDataPack, create_cls_dataloader
-from ..utils import KEY_B, KEY_E, LOSSES, LR_SCHEDULERS, MODELS, OPTIMIZERS, URL_B, URL_E
+from ..utils import (
+    KEY_B,
+    KEY_E,
+    LOSSES,
+    LR_SCHEDULERS,
+    MODELS,
+    OPTIMIZERS,
+    URL_B,
+    URL_E,
+    load_weights_for_model,
+)
 from .trainer import TrainerBase
 
 
@@ -63,7 +73,10 @@ class ClsTrainer(TrainerBase):
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
 
+        weights = self.cfg.model.pop("_weights_", None)
         model = MODELS.create(self.cfg.model)
+        if weights is not None:
+            load_weights_for_model(model, weights, self.accelerator.is_main_process)
 
         if self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
