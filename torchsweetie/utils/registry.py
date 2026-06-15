@@ -45,6 +45,8 @@ class Registry[T]:
         name = _cfg.pop("name")
         scope = _cfg.pop("scope", None)
         key = f"{scope}/{name}" if scope else name
+        if key not in self:
+            key = name
 
         return self[key](*args, **_cfg, **kwargs)  # ty: ignore
 
@@ -79,6 +81,8 @@ class OptimizerRegistry[T](Registry[T]):
         name = _cfg.pop("name")
         scope = _cfg.pop("scope", None)
         key = f"{scope}/{name}" if scope else name
+        if key not in self:
+            key = name
 
         return self[key](model, **_cfg)  # ty: ignore
 
@@ -96,6 +100,8 @@ class LRSchedulerRegistry[T](Registry[T]):
         name = _cfg.pop("name")
         scope = _cfg.pop("scope", None)
         key = f"{scope}/{name}" if scope else name
+        if key not in self:
+            key = name
 
         return self[key](optimizer, **_cfg)  # ty: ignore
 
