@@ -5,7 +5,7 @@ from pathlib import Path
 
 from accelerate import Accelerator
 from rich import print
-from torch import nn
+from torch import distributed, nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -138,6 +138,11 @@ class TrainerBase(ABC):
     def after_train(self) -> None:
         for h in self.hooks:
             h.after_train()
+
+        self.accelerator.wait_for_everyone()
+
+        if distributed.is_available() and distributed.is_initialized():
+            distributed.destroy_process_group()
 
     def before_step(self) -> None:
         for h in self.hooks:
