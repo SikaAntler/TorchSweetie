@@ -32,7 +32,7 @@ SCOPE = "classification"
 
 class ClsLoss(nn.Module, ABC):
     @abstractmethod
-    def forward(self, logits: Tensor, data: ClsDataPack) -> Tensor: ...
+    def forward(self, logits: Tensor, data: ClsDataPack) -> Tensor | dict[str, Tensor]: ...
 
 
 @LOSSES.register(scope=SCOPE)

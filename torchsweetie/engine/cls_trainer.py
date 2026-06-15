@@ -11,7 +11,7 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from torch import nn
+from torch import Tensor, nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
@@ -40,7 +40,7 @@ class ClsTrainer(TrainerBase):
 
         # Useful Parameters
         if self.accelerator.is_main_process:
-            self.avg_loss = 0.0
+            self.avg_loss: dict[str, float] = {}
             self.accuracy = 0.0
             self.best_acc = 0.0
             self.best_epoch = -1
@@ -138,7 +138,8 @@ class ClsTrainer(TrainerBase):
     def run_step(self) -> None:
         self.model.train()
         self.loss_fn.train()
-        total_loss = 0.0
+
+        total_loss: dict[str, list[float]] = {}
 
         with Progress(
             TextColumn("{task.description}"),
@@ -146,10 +147,13 @@ class ClsTrainer(TrainerBase):
             MofNCompleteColumn(),
             TimeElapsedColumn(),
             TimeRemainingColumn(),
+            TextColumn("{task.fields[losses]}"),
             transient=True,
             disable=not self.accelerator.is_main_process,
         ) as progress:
-            task = progress.add_task(f"Epoch {self.epoch} train", total=len(self.train_dataloader))
+            task = progress.add_task(
+                f"Epoch {self.epoch} train", total=len(self.train_dataloader), losses=""
+            )
 
             for data in self.train_dataloader:
                 data: ClsDataPack
@@ -157,9 +161,26 @@ class ClsTrainer(TrainerBase):
                 data.targets = data.targets.to(self.device)
                 data.ori_sizes = data.ori_sizes.to(self.device)
 
+                losses: list[str] = []
+
                 with self.accelerator.autocast():
                     outputs = self.model(data)
-                    loss = self.loss_fn(outputs, data)
+                    loss_dict: Tensor | dict[str, Tensor] = self.loss_fn(outputs, data)
+                    if isinstance(loss_dict, Tensor):
+                        loss = loss_dict
+                        loss_item = loss_dict.cpu().item()
+                        losses.append(f"loss={loss_item:.4f}")
+                        if "loss" not in total_loss:
+                            total_loss["loss"] = []
+                        total_loss["loss"].append(loss_item)
+                    else:
+                        loss = sum(loss_dict.values())
+                        for key, value in loss_dict.items():
+                            loss_item = value.cpu().item()
+                            losses.append(f"{key}={loss_item:.4f}")
+                            if key not in total_loss:
+                                total_loss[key] = []
+                            total_loss[key].append(loss_item)
 
                 self.accelerator.backward(loss)
 
@@ -173,25 +194,30 @@ class ClsTrainer(TrainerBase):
 
                 self.accelerator.wait_for_everyone()
 
-                loss_reduce = self.accelerator.reduce(loss, "mean").cpu().item()
-                total_loss += loss_reduce
+                # TODO total_loss reduce
 
-                progress.update(task, advance=1)
+                progress.update(task, advance=1, losses=" ".join(losses))
 
         # TODO: if not accelerator.optimizer_step_was_skipped:
         if self.lr_scheduler is not None:
             self.lr_scheduler.step()
 
-        self.avg_loss = total_loss / len(self.train_dataloader)
+        if self.accelerator.is_main_process:
+            self.avg_loss.clear()
+            for key, value in total_loss.items():
+                self.avg_loss[key] = sum(value) / len(value)
 
     @override
     def after_step(self) -> None:
         self._val()
 
         if self.accelerator.is_main_process:
-            print(
-                f"Epoch {self.epoch}: avg_loss={KEY_B}{self.avg_loss:.5f}{KEY_E} | accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
-            )
+            msg = f"Epoch {self.epoch}: "
+            for key, value in self.avg_loss.items():
+                msg += f"(avg){key}={KEY_B}{value:.3f}{KEY_E} | "
+            msg += f"accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
+            print(msg)
+
             self._record()
 
         super().after_step()

@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 from math import sqrt
-from pathlib import Path
 from typing import override
 
-import pandas as pd
 import torch
 import torch.nn.functional as F
 from torch import Tensor, nn
@@ -16,7 +14,7 @@ SCOPE = "classification"
 
 class ClsWithLogitsLoss(nn.Module, ABC):
     @abstractmethod
-    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor: ...
+    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor | dict[str, Tensor]: ...
 
 
 @LOSSES.register(scope=SCOPE)
@@ -153,7 +151,6 @@ class FeatureCenterConstraint(ClsWithLogitsLoss):
         bound = sqrt(1 / in_features)
         centers = torch.empty(num_classes, in_features)
         nn.init.uniform_(centers, -bound, bound)
-        # self.register_buffer("centers", centers)
         self.centers = nn.Parameter(centers)
 
         self.lambda_ = lambda_
@@ -161,7 +158,7 @@ class FeatureCenterConstraint(ClsWithLogitsLoss):
         self.loss_fn = nn.CrossEntropyLoss()
 
     @override
-    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor:
+    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor | dict[str, Tensor]:
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
@@ -176,7 +173,7 @@ class FeatureCenterConstraint(ClsWithLogitsLoss):
 
             ce_loss = self.loss_fn(logits, data.targets)
 
-            return self.lambda_ * center_loss + ce_loss
+            return {"center_loss": self.lambda_ * center_loss, "ce_loss": ce_loss}
         else:
             return logits
 
