@@ -222,15 +222,17 @@ class ClsTrainer(TrainerBase):
 
     @override
     def after_step(self) -> None:
-        self._val()
-
         if self.accelerator.is_main_process:
             msg = f"Epoch {self.epoch}: "
-            for key, value in self.avg_loss.items():
-                msg += f"(avg){key}={KEY_B}{value:.3f}{KEY_E} | "
-            msg += f"accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
-            print(msg)
+            msg += " | ".join([f"(avg){k}={KEY_B}{v:.3f}{KEY_E}" for k, v in self.avg_loss.items()])
 
+        if (self.epoch + 1) % self.val_interval == 0:
+            self._val()
+            if self.accelerator.is_main_process:
+                msg += f" | accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
+
+        if self.accelerator.is_main_process:
+            print(msg)
             self._record()
 
         super().after_step()
