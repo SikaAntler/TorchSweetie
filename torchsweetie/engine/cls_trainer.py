@@ -54,7 +54,7 @@ class ClsTrainer(TrainerBase):
             self.accuracy = 0.0
             self.best_acc = 0.0
             self.best_epoch = -1
-            self.results = []
+            self.results: list[tuple[int, dict[str, float], float]] = []
 
         # Save
         if self.cfg.get("save") is None:
@@ -280,8 +280,11 @@ class ClsTrainer(TrainerBase):
     def _record(self) -> None:
         self.results.append((self.epoch, self.avg_loss, self.accuracy))
         with open(self.exp_dir / "record.csv", "w", encoding="utf-8") as fw:
-            for epoch, avg_loss, accurary in self.results:
-                fw.write(f"{epoch},{avg_loss},{accurary}\n")
+            loss_header = ",".join(self.avg_loss.keys())
+            fw.write(f"epoch,{loss_header},accuracy\n")
+            for epoch, avg_loss, accuracy in self.results:
+                losses = ",".join([str(v) for v in avg_loss.values()])
+                fw.write(f"{epoch},{losses},{accuracy}\n")
 
         # Save the interval(epoch)
         if (self.epoch + 1) % self.save_interval == 0:
