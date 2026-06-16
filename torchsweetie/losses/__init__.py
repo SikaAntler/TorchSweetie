@@ -1,18 +1,1 @@
-from .cls_losses import (
-    BalancedSoftmaxLoss,
-    BCELoss,
-    ClsLoss,
-    CrossEntropyLoss,
-    EffectiveNumberLoss,
-    FocalLoss,
-    LogitAdjustedLoss,
-    ReWeightCELoss,
-    TauNormalizedLoss,
-)
-from .cls_with_logits_losses import (
-    BCEWithLogitsLoss,
-    CenterLoss,
-    CEWithLinearLoss,
-    ClsWithLogitsLoss,
-    FeatureCenterConstraint,
-)
+from . import cls_losses, cls_with_logits_losses  # noqa: F401

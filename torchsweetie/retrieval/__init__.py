@@ -1,1 +1,1 @@
-from .similarity import ChebyshevDistance, CosineSimilarity, EuclideanDistance, ManhattanDistance
+from . import similarity  # noqa: F401
