@@ -1,3 +1,4 @@
+from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import CosineAnnealingLR, LRScheduler
 
@@ -32,7 +33,7 @@ class CosineAnnealingLRWarmUp(LRScheduler):
         else:
             self.scheduler.step()
 
-    def get_lr(self) -> list[float]:
+    def get_lr(self) -> list[float | Tensor]:
         lrs = []
         for base_lr in self.base_lrs:
             k = (base_lr - self.eta_min) / (self.warmup + 1)
