@@ -48,7 +48,7 @@ def _init_model(
         model = _vit_models[model_name]()
 
     if num_classes == 0:
-        model.heads = nn.Identity()  # pyright: ignore
+        model.heads = nn.Identity()
     else:
         heads_layers: OrderedDict[str, nn.Module] = OrderedDict()
         heads_layers["head"] = nn.Linear(_hidden_dims[model_name], num_classes)

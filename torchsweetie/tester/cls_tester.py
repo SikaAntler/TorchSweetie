@@ -91,7 +91,7 @@ class ClsTester:
 
             outputs = self.model(data)
             if self.loss_fn is not None:
-                outputs = self.loss_fn(outputs, data)  # pyright: ignore
+                outputs = self.loss_fn(outputs, data)
 
             predicts = torch.argmax(outputs, dim=1)
             self.y_pred.extend(predicts.tolist())
@@ -107,7 +107,7 @@ class ClsTester:
             labels=self.labels,
             target_names=self.classes,
             output_dict=True,
-            zero_division=0.0,  # pyright: ignore
+            zero_division=0.0,
         )
 
         report = pd.DataFrame(report).T

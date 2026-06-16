@@ -29,7 +29,7 @@ def _init_inception(model_name: str, num_classes: int, weights: Optional[str] = 
         model = _inception_models[model_name]()
 
     if num_classes == 0:
-        model.fc = nn.Identity()  # pyright: ignore
+        model.fc = nn.Identity()
     else:
         model.fc = nn.Linear(2048, num_classes)
 

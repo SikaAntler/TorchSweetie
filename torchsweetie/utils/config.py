@@ -37,7 +37,7 @@ def load_config(cfg_file: Path) -> DictConfig:
         base_cfg_file = cfg_file.parent / base
         base_cfg = load_config(base_cfg_file)
         _handle_delete(base_cfg, cfg)
-        return OmegaConf.merge(base_cfg, cfg)  # pyright: ignore
+        return OmegaConf.merge(base_cfg, cfg)  # ty: ignore
     else:
         return cfg
 

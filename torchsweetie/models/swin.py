@@ -50,7 +50,7 @@ def _init_model(
         model.load_state_dict(_weights, False)
 
     if num_classes == 0:
-        model.head == nn.Identity()  # pyright: ignore
+        model.head == nn.Identity()
 
     return model
 
