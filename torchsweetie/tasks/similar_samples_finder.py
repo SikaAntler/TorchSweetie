@@ -10,7 +10,7 @@ from torch import nn
 from tqdm import tqdm
 
 from ..data import ClsDataPack, create_cls_dataloader
-from ..utils import DIR_B, DIR_E, MODELS, URL_B, URL_E, load_config
+from ..utils import DIR_B, DIR_E, MODELS, URL_B, URL_E, load_config, load_weights_for_model
 
 
 class SimilarSamplesFinder:
@@ -35,11 +35,12 @@ class SimilarSamplesFinder:
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
         # Model
-        model_weights = self.exp_dir / weights
-        self.cfg.model.weights = model_weights
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
+        self.cfg.model.pop("_weights_", None)
         self.model = MODELS.create(self.cfg.model)
+        model_weights = self.exp_dir / weights
+        load_weights_for_model(self.model, str(model_weights), True)
         self.model.fc = nn.Identity()
         self.model.cuda()
 
@@ -48,7 +49,7 @@ class SimilarSamplesFinder:
         dataloader_cfg.drop_last = False
         self.dataloader = create_cls_dataloader(dataloader_cfg)
         self.sup_dataloader_cfg = deepcopy(dataloader_cfg)
-        self.sup_dataloader_cfg.dataset.csv_file = sup_dataset_file
+        self.sup_dataloader_cfg.dataset.dataset_file = sup_dataset_file
         self.sup_dataloader = create_cls_dataloader(self.sup_dataloader_cfg)
 
         # classes
@@ -62,7 +63,7 @@ class SimilarSamplesFinder:
     @torch.inference_mode()
     def extract(self) -> None:
         if self.features is not None or self.sup_features is not None:
-            tqdm.write(f"You may run the extraction twice, since the features are not None")
+            tqdm.write("You may run the extraction twice, since the features are not None")
 
         self.model.eval()
 
@@ -72,25 +73,27 @@ class SimilarSamplesFinder:
 
     def find_similar_samples(self, q: float) -> list[tuple[Path, str]]:
         if self.features is None:
-            features_file = Path(self.cfg.train_dataloader.dataset.csv_file).with_suffix(".npy")
+            features_file = Path(self.cfg.train_dataloader.dataset.dataset_file).with_suffix(".npy")
             features = np.load(features_file)
         else:
             features = self.features.cpu().numpy()
 
         if self.sup_features is None:
-            sup_features_file = Path(self.sup_dataloader_cfg.dataset.csv_file).with_suffix(".npy")
+            sup_features_file = Path(self.sup_dataloader_cfg.dataset.dataset_file).with_suffix(
+                ".npy"
+            )
             sup_features = np.load(sup_features_file)
         else:
             sup_features = self.sup_features.cpu().numpy()
 
         dataset: list[tuple[Path, str]] = []
-        dataset_file = Path(self.cfg.train_dataloader.dataset.csv_file)
+        dataset_file = Path(self.cfg.train_dataloader.dataset.dataset_file)
         for f, n in pd.read_csv(dataset_file, header=None).itertuples(False):
             dataset.append((Path(f), n))
         assert len(dataset) == features.shape[0], f"Main: {len(dataset)}, {features.shape}"
 
         sup_dataset: list[tuple[Path, str]] = []
-        sup_dataset_file = Path(self.sup_dataloader_cfg.dataset.csv_file)
+        sup_dataset_file = Path(self.sup_dataloader_cfg.dataset.dataset_file)
         for f, n in pd.read_csv(sup_dataset_file, header=None).itertuples(False):
             if n in self.classes:
                 sup_dataset.append((Path(f), n))
@@ -126,11 +129,11 @@ class SimilarSamplesFinder:
         assert self.features is not None and self.sup_features is not None
 
         features = self.features.cpu().numpy()
-        features_file = Path(self.cfg.train_dataloader.dataset.csv_file).with_suffix(".npy")
+        features_file = Path(self.cfg.train_dataloader.dataset.dataset_file).with_suffix(".npy")
         np.save(features_file, features)
 
         sup_features = self.sup_features.cpu().numpy()
-        sup_features_file = Path(self.sup_dataloader_cfg.dataset.csv_file).with_suffix(".npy")
+        sup_features_file = Path(self.sup_dataloader_cfg.dataset.dataset_file).with_suffix(".npy")
         np.save(sup_features_file, sup_features)
 
     @staticmethod
