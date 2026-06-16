@@ -1,5 +1,6 @@
 from .color import DIR_B, DIR_E, KEY_B, KEY_E, URL_B, URL_E
 from .config import load_config, save_config
+from .ema import ModelEMA
 from .print_report import print_report, print_report_old
 from .registry import (
     BATCH_SAMPLERS,
@@ -26,6 +27,7 @@ __all__ = [
     "URL_E",
     "load_config",
     "save_config",
+    "ModelEMA",
     "print_report",
     "print_report_old",
     "BATCH_SAMPLERS",

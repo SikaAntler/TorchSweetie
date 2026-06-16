@@ -26,6 +26,7 @@ from ..utils import (
     OPTIMIZERS,
     URL_B,
     URL_E,
+    ModelEMA,
     load_weights_for_model,
 )
 from .trainer import TrainerBase
@@ -136,6 +137,18 @@ class ClsTrainer(TrainerBase):
         )
 
     @override
+    def build_ema(self) -> ModelEMA | None:
+        if "ema" in self.cfg:
+            return ModelEMA(
+                self.accelerator.unwrap_model(self.model),
+                self.cfg.ema.decay,
+                self.cfg.ema.tau,
+                updates=0,
+            )
+        else:
+            return None
+
+    @override
     def train(self) -> None:
         self.before_train()
 
@@ -205,7 +218,8 @@ class ClsTrainer(TrainerBase):
                 self.optimizer.step()
                 self.optimizer.zero_grad()
 
-                self.accelerator.wait_for_everyone()
+                if self.ema is not None:
+                    self.ema.update(self.accelerator.unwrap_model(self.model))
 
                 # TODO total_loss reduce
 

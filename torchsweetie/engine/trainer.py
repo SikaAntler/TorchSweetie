@@ -17,6 +17,7 @@ from ..utils import (
     KEY_E,
     URL_B,
     URL_E,
+    ModelEMA,
     load_config,
     save_config,
     seed_all_rng,
@@ -101,6 +102,8 @@ class TrainerBase(ABC):
 
         self.prepare()
 
+        self.ema = self.build_ema()
+
     @abstractmethod
     def build_model(self) -> nn.Module: ...
 
@@ -121,6 +124,9 @@ class TrainerBase(ABC):
 
     @abstractmethod
     def prepare(self) -> None: ...
+
+    @abstractmethod
+    def build_ema(self) -> ModelEMA | None: ...
 
     def register_hooks(self, hooks: list[HookBase]) -> None:
         for h in hooks:
