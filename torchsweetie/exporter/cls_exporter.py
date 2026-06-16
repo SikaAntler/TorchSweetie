@@ -1,5 +1,4 @@
 import json
-from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -22,21 +21,30 @@ from ..utils import (
     URL_E,
     load_config,
     load_weights,
+    load_weights_for_model,
 )
 
 
 class ONNXExportWrapper(nn.Module):
-    def __init__(self, model: nn.Module, input_size: tuple[int, int, int, int]) -> None:
+    def __init__(
+        self, model: nn.Module, loss_fn: nn.Module | None, input_size: tuple[int, int, int, int]
+    ) -> None:
         super().__init__()
 
         self.model = model
+        self.loss_fn = loss_fn
 
         batch_size, _, H, W = input_size
         self.targets = torch.LongTensor([0] * batch_size)
         self.ori_sizes = torch.tensor([(H, W)] * batch_size)
 
     def forward(self, x: Tensor) -> Tensor:
-        return self.model(ClsDataPack(x, self.targets, self.ori_sizes))
+        data = ClsDataPack(x, self.targets, self.ori_sizes)
+        x = self.model(data)
+        if self.loss_fn is not None:
+            x = self.loss_fn(x, data)
+
+        return x
 
 
 class ClsExporter:
@@ -56,28 +64,25 @@ class ClsExporter:
         print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
 
         # Model
-        model_weights = self.exp_dir / weights
-        self.cfg.model.weights = model_weights
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
+        self.cfg.model.pop("_weights_", None)
         self.model = MODELS.create(self.cfg.model)
+        self.model_weights = self.exp_dir / weights
+        load_weights_for_model(self.model, str(self.model_weights), True)
 
         # Loss Function
+        self.loss_fn: nn.Module | None = None
         if requires_loss:
             if "scope" not in self.cfg.loss:
                 self.cfg.loss.scope = self.SCOPE
             loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
             if list(loss_fn.parameters()) != []:
-                loss_weights = exp_dir / f"{model_weights.stem}-loss{model_weights.suffix}"
-                load_weights(loss_fn, loss_weights)
-                self.model = nn.Sequential(
-                    OrderedDict(
-                        {
-                            "model": self.model,
-                            "loss": loss_fn,
-                        }
-                    )
+                loss_weights = (
+                    exp_dir / f"{self.model_weights.stem}-loss{self.model_weights.suffix}"
                 )
+                load_weights(loss_fn, loss_weights)
+                self.loss_fn = loss_fn
 
     def export_onnx(
         self,
@@ -97,7 +102,7 @@ class ClsExporter:
         assert len(input_size) == 4
         x = torch.randn(input_size)
 
-        model = ONNXExportWrapper(self.model, input_size)
+        model = ONNXExportWrapper(self.model, self.loss_fn, input_size)
         model = model.eval()
 
         if half:
@@ -109,7 +114,7 @@ class ClsExporter:
             model.cuda()
 
         if onnx_file is None:
-            f = self.cfg.model.weights.with_suffix(".onnx")
+            f = self.model_weights.with_suffix(".onnx")
         else:
             f = self.exp_dir / onnx_file
 
