@@ -7,9 +7,17 @@ _NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]
 
 
 @OPTIMIZERS.register("AdamW")
-def adamW(model: nn.Module | list[nn.Module], lr: float, weight_decay: float):
+def adamW(
+    model: nn.Module | list[nn.Module],
+    lr: float,
+    betas: list[float] = [0.9, 0.999],
+    weight_decay: float = 1e-2,
+):
+    assert len(betas) == 2
+
     params = _set_weight_decay(model, weight_decay)
-    return AdamW(params, lr)
+
+    return AdamW(params, lr, (betas[0], betas[1]), weight_decay=0.0)
 
 
 @OPTIMIZERS.register("SGD")
