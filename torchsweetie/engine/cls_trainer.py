@@ -11,24 +11,11 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from torch import Tensor, nn
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler
+from torch import Tensor
 from torch.utils.data import DataLoader
 
 from ..data import ClsDataPack, create_cls_dataloader
-from ..utils import (
-    KEY_B,
-    KEY_E,
-    LOSSES,
-    LR_SCHEDULERS,
-    MODELS,
-    OPTIMIZERS,
-    URL_B,
-    URL_E,
-    ModelEMA,
-    load_weights_for_model,
-)
+from ..utils import KEY_B, KEY_E, URL_B, URL_E
 from .trainer import TrainerBase
 
 
@@ -70,51 +57,6 @@ class ClsTrainer(TrainerBase):
         self.register_hooks([])
 
     @override
-    def build_model(self) -> nn.Module:
-        if "scope" not in self.cfg.model:
-            self.cfg.model.scope = self.SCOPE
-
-        weights = self.cfg.model.pop("_weights_", None)
-        model = MODELS.create(self.cfg.model)
-        if weights is not None:
-            load_weights_for_model(model, weights, self.accelerator.is_main_process)
-
-        if self.cfg.train.get("sync_bn", False):
-            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-
-        return model
-
-    @override
-    def build_loss_fn(self) -> nn.Module:
-        if "scope" not in self.cfg.loss:
-            self.cfg.loss.scope = self.SCOPE
-
-        loss_fn = LOSSES.create(self.cfg.loss)
-
-        if list(loss_fn.parameters()) != []:
-            self.loss_params = True
-        else:
-            self.loss_params = False
-
-        return loss_fn
-
-    @override
-    def build_optimizer(self) -> Optimizer:
-        if "scope" not in self.cfg.optimizer:
-            self.cfg.optimizer.scope = self.SCOPE
-
-        return OPTIMIZERS.create(self.cfg.optimizer, self.model)
-
-    @override
-    def build_lr_scheduler(self) -> LRScheduler:
-        self.lr_scheduler = self.cfg.get("lr_scheduler")
-
-        if "scope" not in self.cfg.lr_scheduler:
-            self.cfg.lr_scheduler.scope = self.SCOPE
-
-        return LR_SCHEDULERS.create(self.cfg.lr_scheduler, self.optimizer)
-
-    @override
     def build_train_dataloader(self) -> DataLoader:
         return create_cls_dataloader(self.cfg.train_dataloader)
 
@@ -127,26 +69,6 @@ class ClsTrainer(TrainerBase):
             val_dataloader = self.accelerator.prepare(val_dataloader)
 
         return val_dataloader
-
-    @override
-    def prepare(self) -> None:
-        self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader = (
-            self.accelerator.prepare(
-                self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader
-            )
-        )
-
-    @override
-    def build_ema(self) -> ModelEMA | None:
-        if "ema" in self.cfg:
-            return ModelEMA(
-                self.accelerator.unwrap_model(self.model),
-                self.cfg.ema.decay,
-                self.cfg.ema.tau,
-                updates=0,
-            )
-        else:
-            return None
 
     @override
     def train(self) -> None:

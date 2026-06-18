@@ -15,10 +15,15 @@ from ..utils import (
     DIR_E,
     KEY_B,
     KEY_E,
+    LOSSES,
+    LR_SCHEDULERS,
+    MODELS,
+    OPTIMIZERS,
     URL_B,
     URL_E,
     ModelEMA,
     load_config,
+    load_weights_for_model,
     save_config,
     seed_all_rng,
 )
@@ -44,10 +49,10 @@ class HookBase:
 
 
 class TrainerBase(ABC):
+    SCOPE: str | None = None
+
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
         super().__init__()
-
-        self.hooks: list[HookBase] = []
 
         # config
         self.cfg_file = cfg_file.absolute()
@@ -67,13 +72,13 @@ class TrainerBase(ABC):
         # 考虑到DDP模式下训练结果有别于单卡，batch_size可以不一致
         split_batch = False
         mixed_precision = self.cfg.train.get("mixed_precision", "no")
-        if mixed_precision != "no":
-            print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.accelerator = Accelerator(
             split_batches=split_batch,
             mixed_precision=mixed_precision,
             step_scheduler_with_optimizer=False,  # 否则多卡时一次step等于num_processes次
         )
+        if self.accelerator.is_main_process and mixed_precision != "no":
+            print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.device = self.accelerator.device
 
         # Running directory, used to record results and models
@@ -104,17 +109,48 @@ class TrainerBase(ABC):
 
         self.ema = self.build_ema()
 
-    @abstractmethod
-    def build_model(self) -> nn.Module: ...
+        self._hooks: list[HookBase] = []
 
-    @abstractmethod
-    def build_loss_fn(self) -> nn.Module: ...
+    def build_model(self) -> nn.Module:
+        if "scope" not in self.cfg.model:
+            self.cfg.model.scope = self.SCOPE
 
-    @abstractmethod
-    def build_optimizer(self) -> Optimizer: ...
+        weights = self.cfg.model.pop("_weights_", None)
+        model = MODELS.create(self.cfg.model)
+        if weights is not None:
+            load_weights_for_model(model, weights, self.accelerator.is_main_process)
 
-    @abstractmethod
-    def build_lr_scheduler(self) -> LRScheduler: ...
+        if self.cfg.train.get("sync_bn", False):
+            model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+
+        return model
+
+    def build_loss_fn(self) -> nn.Module:
+        if "scope" not in self.cfg.loss:
+            self.cfg.loss.scope = self.SCOPE
+
+        loss_fn = LOSSES.create(self.cfg.loss)
+
+        if list(loss_fn.parameters()) != []:
+            self.loss_params = True
+        else:
+            self.loss_params = False
+
+        return loss_fn
+
+    def build_optimizer(self) -> Optimizer:
+        if "scope" not in self.cfg.optimizer:
+            self.cfg.optimizer.scope = self.SCOPE
+
+        return OPTIMIZERS.create(self.cfg.optimizer, self.model)
+
+    def build_lr_scheduler(self) -> LRScheduler:
+        self.lr_scheduler = self.cfg.get("lr_scheduler")
+
+        if "scope" not in self.cfg.lr_scheduler:
+            self.cfg.lr_scheduler.scope = self.SCOPE
+
+        return LR_SCHEDULERS.create(self.cfg.lr_scheduler, self.optimizer)
 
     @abstractmethod
     def build_train_dataloader(self) -> DataLoader: ...
@@ -122,27 +158,39 @@ class TrainerBase(ABC):
     @abstractmethod
     def build_val_dataloader(self) -> DataLoader | None: ...
 
-    @abstractmethod
-    def prepare(self) -> None: ...
+    def prepare(self) -> None:
+        self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader = (
+            self.accelerator.prepare(
+                self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader
+            )
+        )
 
-    @abstractmethod
-    def build_ema(self) -> ModelEMA | None: ...
+    def build_ema(self) -> ModelEMA | None:
+        if "ema" in self.cfg:
+            return ModelEMA(
+                self.accelerator.unwrap_model(self.model),
+                self.cfg.ema.decay,
+                self.cfg.ema.tau,
+                updates=0,
+            )
+        else:
+            return None
 
     def register_hooks(self, hooks: list[HookBase]) -> None:
         for h in hooks:
             assert isinstance(h, HookBase)
             h.trainer = weakref.proxy(self)
-        self.hooks.extend(hooks)
+        self._hooks.extend(hooks)
 
     @abstractmethod
     def train(self) -> None: ...
 
     def before_train(self) -> None:
-        for h in self.hooks:
+        for h in self._hooks:
             h.before_train()
 
     def after_train(self) -> None:
-        for h in self.hooks:
+        for h in self._hooks:
             h.after_train()
 
         self.accelerator.wait_for_everyone()
@@ -151,16 +199,16 @@ class TrainerBase(ABC):
             distributed.destroy_process_group()
 
     def before_step(self) -> None:
-        for h in self.hooks:
+        for h in self._hooks:
             h.before_step()
 
     @abstractmethod
     def run_step(self) -> None: ...
 
     def after_backward(self) -> None:
-        for h in self.hooks:
+        for h in self._hooks:
             h.after_backward()
 
     def after_step(self) -> None:
-        for h in self.hooks:
+        for h in self._hooks:
             h.after_step()

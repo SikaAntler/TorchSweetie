@@ -55,7 +55,8 @@ class LoadStats:
 def load_weights_for_model(
     model: nn.Module, weights: str, verbose: bool = False, topk: int = 10
 ) -> None:
-    print(f"Loading weights from: {URL_B}{weights}{URL_E}")
+    if verbose:
+        print(f"Loading weights from: {URL_B}{weights}{URL_E}")
 
     model_dict = model.state_dict()
     weights_dict = torch.load(weights, "cpu")
