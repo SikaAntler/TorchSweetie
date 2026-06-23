@@ -1,16 +1,24 @@
+from abc import ABC, abstractmethod
+
 import numpy as np
 import pandas as pd
 import torch
 from numpy import ndarray
 from omegaconf import DictConfig
 from PIL import Image
-from torch import Tensor
+from torch import Tensor, nn
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from ..utils import TRANSFORMS
 from .cls_datastructs import ClsDataImage, ClsDataPack, ClsDataTensor
-from .cls_transforms import ClsTransform
+
+
+class ClsTransform(nn.Module, ABC):
+    dataset: list[tuple[str, str]]
+
+    @abstractmethod
+    def __call__(self, data: ClsDataImage) -> ClsDataImage: ...
 
 
 class ClsDataset(Dataset):
@@ -19,29 +27,32 @@ class ClsDataset(Dataset):
     def __init__(self, dataset_file: str, classes_file: str, transforms: list[DictConfig]) -> None:
         super().__init__()
 
-        dataset = pd.read_csv(dataset_file, header=None)
+        self.dataset: list[tuple[str, str]] = []
+
         self.classes = pd.read_csv(classes_file, header=None)[0].to_list()
 
-        self.images, self.labels = [], []
-        for img_file, name in dataset.itertuples(False):
-            if name in self.classes:
-                self.images.append(img_file)
-                self.labels.append(name)
+        dataset = pd.read_csv(dataset_file, header=None)
+        for img_file, label in dataset.itertuples(False, None):
+            if label in self.classes:
+                self.dataset.append((img_file, label))
             else:
-                tqdm.write(f"HINT: {img_file} of {name} is ignored")
+                tqdm.write(f"HINT: {img_file} of {label} is ignored")
 
         self.transforms: list[ClsTransform] = []
         for cfg in transforms:
             if "scope" not in cfg:
                 cfg.scope = self.SCOPE
-            self.transforms.append(TRANSFORMS.create(cfg))
+            transform = TRANSFORMS.create(cfg)
+            assert isinstance(transform, ClsTransform)
+            transform.dataset = self.dataset
+            self.transforms.append(transform)
 
     def __len__(self) -> int:
-        return len(self.labels)
+        return len(self.dataset)
 
     def __getitem__(self, idx: int) -> ClsDataTensor:  # ty: ignore
-        img_file = self.images[idx]
-        label = self.classes.index(self.labels[idx])
+        img_file, label = self.dataset[idx]
+        label = self.classes.index(label)
 
         image = np.array(Image.open(img_file))
         H, W = image.shape[:2]

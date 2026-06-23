@@ -1,23 +1,16 @@
 import random
-from abc import ABC, abstractmethod
 from typing import Literal, Sequence, override
 
 import cv2
 import numpy as np
 import pandas as pd
-import torch
 from PIL import Image, ImageFilter
-from torch import nn
 
 from ..utils import TRANSFORMS
+from .cls_dataset import ClsTransform
 from .cls_datastructs import ClsDataImage
 
 SCOPE = "classification"
-
-
-class ClsTransform(nn.Module, ABC):
-    @abstractmethod
-    def __call__(self, data: ClsDataImage) -> ClsDataImage: ...
 
 
 @TRANSFORMS.register(scope=SCOPE)
