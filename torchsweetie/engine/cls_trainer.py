@@ -179,7 +179,11 @@ class ClsTrainer(TrainerBase):
         if self.val_dataloader is None:
             return
 
-        self.model.eval()
+        if self.ema:
+            model = self.ema.ema
+        else:
+            model = self.model
+            model.eval()
         self.loss_fn.eval()
 
         corrects = 0
@@ -201,9 +205,10 @@ class ClsTrainer(TrainerBase):
                 data.targets = data.targets.to(self.device)
                 data.ori_sizes = data.ori_sizes.to(self.device)
 
-                outputs = self.model(data)
-                if self.loss_params:
-                    outputs = self.loss_fn(outputs, data)
+                with self.accelerator.autocast():
+                    outputs = model(data)
+                    if self.loss_params:
+                        outputs = self.loss_fn(outputs, data)
 
                 predicts = torch.argmax(outputs, dim=1)
                 metrics = self.accelerator.gather_for_metrics(predicts == data.targets)
@@ -241,7 +246,10 @@ class ClsTrainer(TrainerBase):
 
     def _save(self, prefix: Literal["epoch", "last", "best"]) -> None:
         # Model
-        model = self.accelerator.unwrap_model(self.model)
+        if self.ema:
+            model = self.ema.ema
+        else:
+            model = self.accelerator.unwrap_model(self.model)
         model_file = self.exp_dir / f"{prefix}-{self.epoch}.pth"
         torch.save(model.state_dict(), model_file)
         self.console.print(f"Saved the {prefix} model: {URL_B}{model_file}{URL_E}")
