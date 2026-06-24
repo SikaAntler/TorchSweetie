@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Literal, override
 
 import torch
-from rich import print
 from rich.progress import (
     BarColumn,
     MofNCompleteColumn,
@@ -100,7 +99,9 @@ class ClsTrainer(TrainerBase):
             disable=not self.accelerator.is_main_process,
         ) as progress:
             task = progress.add_task(
-                f"Epoch {self.epoch} train", total=len(self.train_dataloader), losses=""
+                f"Epoch {self.epoch}/{self.num_epochs - 1} train",
+                total=len(self.train_dataloader),
+                losses="",
             )
 
             for data in self.train_dataloader:
@@ -160,7 +161,7 @@ class ClsTrainer(TrainerBase):
     def after_step(self) -> None:
         if self.accelerator.is_main_process:
             msg = f"Epoch {self.epoch}: "
-            msg += " | ".join([f"(avg){k}={KEY_B}{v:.3f}{KEY_E}" for k, v in self.avg_loss.items()])
+            msg += " | ".join([f"(avg){k}={v:.3f}" for k, v in self.avg_loss.items()])
 
         if (self.epoch + 1) % self.val_interval == 0:
             self._val()
@@ -168,7 +169,7 @@ class ClsTrainer(TrainerBase):
                 msg += f" | accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
 
         if self.accelerator.is_main_process:
-            print(msg)
+            self.console.print(msg)
             self._record()
 
         super().after_step()
@@ -243,7 +244,7 @@ class ClsTrainer(TrainerBase):
         model = self.accelerator.unwrap_model(self.model)
         model_file = self.exp_dir / f"{prefix}-{self.epoch}.pth"
         torch.save(model.state_dict(), model_file)
-        print(f"Saved the {prefix} model: {URL_B}{model_file}{URL_E}")
+        self.console.print(f"Saved the {prefix} model: {URL_B}{model_file}{URL_E}")
 
         # Loss
         if not self.loss_params:
@@ -251,4 +252,4 @@ class ClsTrainer(TrainerBase):
         loss_fn = self.accelerator.unwrap_model(self.loss_fn)
         loss_file = self.exp_dir / f"{prefix}-{self.epoch}-loss.pth"
         torch.save(loss_fn.state_dict(), loss_file)
-        print(f"Saved the {prefix} loss fn: {URL_B}{loss_file}{URL_E}")
+        self.console.print(f"Saved the {prefix} loss fn: {URL_B}{loss_file}{URL_E}")

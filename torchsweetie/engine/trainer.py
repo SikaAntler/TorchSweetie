@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from accelerate import Accelerator
-from rich import print
+from rich.console import Console
 from torch import distributed, nn
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -77,19 +77,21 @@ class TrainerBase(ABC):
             mixed_precision=mixed_precision,
             step_scheduler_with_optimizer=False,  # 否则多卡时一次step等于num_processes次
         )
+        if self.accelerator.is_main_process:
+            self.console = Console(highlight=False)
         if self.accelerator.is_main_process and mixed_precision != "no":
-            print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
+            self.console.print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.device = self.accelerator.device
 
         # Running directory, used to record results and models
         # Only executed by the main process
         if self.accelerator.is_main_process:
-            print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
+            self.console.print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
 
             date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
             self.exp_dir = run_dir.absolute() / self.cfg_file.stem / date_time
             self.exp_dir.mkdir(parents=True)
-            print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
+            self.console.print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
             # Save the config to the parent of experiment directory
             save_config(self.cfg, self.exp_dir.parent / "config.yaml")
 
