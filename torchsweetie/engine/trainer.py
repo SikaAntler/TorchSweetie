@@ -2,6 +2,7 @@ import weakref
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
+from typing import override
 
 from accelerate import Accelerator
 from rich.console import Console
@@ -27,25 +28,6 @@ from ..utils import (
     save_config,
     seed_all_rng,
 )
-
-
-class HookBase:
-    trainer: TrainerBase
-
-    def before_train(self) -> None:
-        pass
-
-    def after_train(self) -> None:
-        pass
-
-    def before_step(self) -> None:
-        pass
-
-    def after_backward(self) -> None:
-        pass
-
-    def after_step(self) -> None:
-        pass
 
 
 class TrainerBase(ABC):
@@ -110,8 +92,6 @@ class TrainerBase(ABC):
         self.prepare()
 
         self.ema = self.build_ema()
-
-        self._hooks: list[HookBase] = []
 
     def build_model(self) -> nn.Module:
         if "scope" not in self.cfg.model:
@@ -178,39 +158,134 @@ class TrainerBase(ABC):
         else:
             return None
 
-    def register_hooks(self, hooks: list[HookBase]) -> None:
+    @abstractmethod
+    def train(self) -> None: ...
+
+    def after_train(self) -> None:
+        self.accelerator.wait_for_everyone()
+        if distributed.is_available() and distributed.is_initialized():
+            distributed.destroy_process_group()
+
+
+class EpochBasedHook:
+    trainer: EpochBasedTrainer
+
+    def before_train(self) -> None:
+        pass
+
+    def before_epoch(self) -> None:
+        pass
+
+    def after_epoch(self) -> None:
+        pass
+
+    def after_train(self) -> None:
+        pass
+
+
+class EpochBasedTrainer(TrainerBase):
+    """For epoch-based training, one 'step' is one epoch."""
+
+    def __init__(self, cfg_file: Path, run_dir: Path) -> None:
+        super().__init__(cfg_file, run_dir)
+
+        self.epoch: int = 0
+
+        self.num_epochs: int = self.cfg.train.num_epochs
+
+        self._hooks: list[EpochBasedHook] = []
+
+    def register_hooks(self, hooks: list[EpochBasedHook]) -> None:
         for h in hooks:
-            assert isinstance(h, HookBase)
             h.trainer = weakref.proxy(self)
         self._hooks.extend(hooks)
 
-    @abstractmethod
-    def train(self) -> None: ...
+    @override
+    def train(self) -> None:
+        self.before_train()
+        for self.epoch in range(self.num_epochs):
+            self.before_epoch()
+            self.run_epoch()
+            self.after_epoch()
+        self.after_train()
 
     def before_train(self) -> None:
         for h in self._hooks:
             h.before_train()
 
+    def before_epoch(self) -> None: ...
+
+    @abstractmethod
+    def run_epoch(self) -> None: ...
+
+    def after_epoch(self) -> None: ...
+
     def after_train(self) -> None:
         for h in self._hooks:
             h.after_train()
 
-        self.accelerator.wait_for_everyone()
+        super().after_train()
 
-        if distributed.is_available() and distributed.is_initialized():
-            distributed.destroy_process_group()
 
-    def before_step(self) -> None:
+class IterBasedHook:
+    trainer: TrainerBase
+
+    def before_train(self) -> None:
+        pass
+
+    def before_iter(self) -> None:
+        pass
+
+    def after_iter(self) -> None:
+        pass
+
+    def after_train(self) -> None:
+        pass
+
+
+class IterBasedTrainer(TrainerBase):
+    """For iter-based training, one 'step' is one iteration."""
+
+    def __init__(self, cfg_file: Path, run_dir: Path) -> None:
+        super().__init__(cfg_file, run_dir)
+
+        self.iter = 0
+
+        self.num_iters = self.cfg.train.num_iters
+
+        self._hooks: list[IterBasedHook] = []
+
+    def register_hooks(self, hooks: list[IterBasedHook]) -> None:
+        for h in hooks:
+            h.trainer = weakref.proxy(self)
+        self._hooks.extend(hooks)
+
+    @override
+    def train(self) -> None:
+        self.before_train()
+        for self.iter in range(self.num_iters):
+            self.before_iter()
+            self.run_iter()
+            self.after_iter()
+        self.after_train()
+
+    def before_train(self) -> None:
         for h in self._hooks:
-            h.before_step()
+            h.before_train()
+
+    def before_iter(self) -> None:
+        for h in self._hooks:
+            h.before_iter()
 
     @abstractmethod
-    def run_step(self) -> None: ...
+    def run_iter(self) -> None: ...
 
-    def after_backward(self) -> None:
+    def after_iter(self) -> None:
         for h in self._hooks:
-            h.after_backward()
+            h.after_iter()
 
-    def after_step(self) -> None:
+    def after_train(self) -> None:
         for h in self._hooks:
-            h.after_step()
+            h.after_train()
+
+        super().after_train()

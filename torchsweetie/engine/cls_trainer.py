@@ -15,19 +15,14 @@ from torch.utils.data import DataLoader
 
 from ..data import ClsDataPack, create_cls_dataloader
 from ..utils import KEY_B, KEY_E, URL_B, URL_E
-from .trainer import TrainerBase
+from .trainer import EpochBasedTrainer
 
 
-class ClsTrainer(TrainerBase):
+class ClsTrainer(EpochBasedTrainer):
     SCOPE = "classification"
 
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
         super().__init__(cfg_file, run_dir)
-
-        self.epoch: int = 0
-
-        # train
-        self.num_epochs = self.cfg.train.num_epochs
 
         # val
         if self.cfg.get("val") is None:
@@ -70,19 +65,7 @@ class ClsTrainer(TrainerBase):
         return val_dataloader
 
     @override
-    def train(self) -> None:
-        self.before_train()
-
-        for self.epoch in range(self.num_epochs):
-            self.before_step()
-            self.run_step()
-            self.after_backward()
-            self.after_step()
-
-        self.after_train()
-
-    @override
-    def run_step(self) -> None:
+    def run_epoch(self) -> None:
         self.model.train()
         self.loss_fn.train()
 
@@ -158,7 +141,7 @@ class ClsTrainer(TrainerBase):
                 self.avg_loss[key] = sum(value) / len(value)
 
     @override
-    def after_step(self) -> None:
+    def after_epoch(self) -> None:
         if self.accelerator.is_main_process:
             msg = f"Epoch {self.epoch}: "
             msg += " | ".join([f"(avg){k}={v:.3f}" for k, v in self.avg_loss.items()])
@@ -172,7 +155,7 @@ class ClsTrainer(TrainerBase):
             self.console.print(msg)
             self._record()
 
-        super().after_step()
+        super().after_epoch()
 
     @torch.inference_mode()
     def _val(self) -> None:
