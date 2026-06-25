@@ -41,12 +41,14 @@ class CenterLoss(ClsWithLogitsLoss):
         self.loss_fn = nn.CrossEntropyLoss()
 
     @override
-    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor:
+    def forward(self, embeddings: Tensor, data: ClsDataPack | None = None) -> Tensor:
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
 
         if self.training:
+            assert data
+
             centers = self.centers[data.targets]  # (B, C)
             center_loss = (embeddings - centers).square().sum(1).mean()
 
@@ -66,12 +68,13 @@ class CEWithLinearLoss(ClsWithLogitsLoss):
         self.loss_fn = nn.CrossEntropyLoss()
 
     @override
-    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor:
+    def forward(self, embeddings: Tensor, data: ClsDataPack | None = None) -> Tensor:
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
 
         if self.training:
+            assert data
             return self.loss_fn(logits, data.targets)
         else:
             return logits
@@ -158,12 +161,16 @@ class FeatureCenterConstraint(ClsWithLogitsLoss):
         self.loss_fn = nn.CrossEntropyLoss()
 
     @override
-    def forward(self, embeddings: Tensor, data: ClsDataPack) -> Tensor | dict[str, Tensor]:
+    def forward(
+        self, embeddings: Tensor, data: ClsDataPack | None = None
+    ) -> Tensor | dict[str, Tensor]:
         # embeddings: (B, N)
         # labels: (B,)
         logits = self.fc(embeddings)  # (B, C)
 
         if self.training:
+            assert data
+
             # embeddings = F.normalize(embeddings.detach(), dim=1)
             embeddings = F.normalize(embeddings, dim=1)
 

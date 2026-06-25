@@ -23,7 +23,7 @@ def main(cfg) -> None:
     weights = weights[0].name
 
     tester = ClsTester(cfg_file, exp_dir, weights)
-    tester.test()
+    tester.run()
     tester.report(cfg.digits)
 
 

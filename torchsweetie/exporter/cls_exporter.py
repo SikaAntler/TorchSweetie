@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, override
 
 import onnx
 import pandas as pd
@@ -10,29 +10,24 @@ from rich import print
 from torch import Tensor, nn
 
 from ..data import ClsDataPack
+from ..engine import RunnerBase
 from ..utils import (
-    DIR_B,
-    DIR_E,
     KEY_B,
     KEY_E,
     LOSSES,
     MODELS,
     URL_B,
     URL_E,
-    load_config,
     load_weights,
     load_weights_for_model,
 )
 
 
 class ONNXExportWrapper(nn.Module):
-    def __init__(
-        self, model: nn.Module, loss_fn: nn.Module | None, input_size: tuple[int, int, int, int]
-    ) -> None:
+    def __init__(self, model: nn.Module, input_size: tuple[int, int, int, int]) -> None:
         super().__init__()
 
         self.model = model
-        self.loss_fn = loss_fn
 
         batch_size, _, H, W = input_size
         self.targets = torch.LongTensor([0] * batch_size)
@@ -41,48 +36,44 @@ class ONNXExportWrapper(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         data = ClsDataPack(x, self.targets, self.ori_sizes)
         x = self.model(data)
-        if self.loss_fn is not None:
-            x = self.loss_fn(x, data)
 
         return x
 
 
-class ClsExporter:
+class ClsExporter(RunnerBase):
     SCOPE = "classification"
 
     def __init__(
         self, cfg_file: Path, exp_dir: Path, weights: str, requires_loss: bool = True
     ) -> None:
-        # Configuration
-        self.cfg_file = cfg_file.absolute()
-        self.cfg = load_config(self.cfg_file)
-        print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
+        super().__init__(cfg_file, exp_dir, weights)
 
-        # Running directory, used to record results and models
-        self.exp_dir = exp_dir.absolute()
-        assert self.exp_dir.exists()
-        print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
+        if requires_loss:
+            loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
+            if any(True for _ in loss_fn.parameters()):
+                loss_weights = self.exp_dir / f"{self.weights.stem}-loss{self.weights.suffix}"
+                load_weights(loss_fn, loss_weights)
+                self.model = nn.Sequential(self.model, loss_fn)
 
-        # Model
+    @override
+    def build_model(self) -> nn.Module:
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
-        self.cfg.model.pop("_weights_", None)
-        self.model = MODELS.create(self.cfg.model)
-        self.model_weights = self.exp_dir / weights
-        load_weights_for_model(self.model, str(self.model_weights), True)
+            self.cfg.loss.scope = self.SCOPE
 
-        # Loss Function
-        self.loss_fn: nn.Module | None = None
-        if requires_loss:
-            if "scope" not in self.cfg.loss:
-                self.cfg.loss.scope = self.SCOPE
-            loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
-            if list(loss_fn.parameters()) != []:
-                loss_weights = (
-                    exp_dir / f"{self.model_weights.stem}-loss{self.model_weights.suffix}"
-                )
-                load_weights(loss_fn, loss_weights)
-                self.loss_fn = loss_fn
+        self.cfg.model.pop("_weights_", None)
+        model = MODELS.create(self.cfg.model)
+        load_weights_for_model(model, str(self.weights), True)
+
+        return model
+
+    @override
+    def build_dataloader(self) -> None:
+        return
+
+    @override
+    def run(self) -> None:
+        pass
 
     def export_onnx(
         self,
@@ -102,7 +93,7 @@ class ClsExporter:
         assert len(input_size) == 4
         x = torch.randn(input_size)
 
-        model = ONNXExportWrapper(self.model, self.loss_fn, input_size)
+        model = ONNXExportWrapper(self.model, input_size)
         model = model.eval()
 
         if half:
@@ -114,7 +105,7 @@ class ClsExporter:
             model.cuda()
 
         if onnx_file is None:
-            f = self.model_weights.with_suffix(".onnx")
+            f = self.weights.with_suffix(".onnx")
         else:
             f = self.exp_dir / onnx_file
 
