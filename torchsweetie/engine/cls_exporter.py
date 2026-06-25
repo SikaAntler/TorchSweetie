@@ -10,7 +10,6 @@ from rich import print
 from torch import Tensor, nn
 
 from ..data import ClsDataPack
-from ..engine import RunnerBase
 from ..utils import (
     KEY_B,
     KEY_E,
@@ -21,6 +20,7 @@ from ..utils import (
     load_weights,
     load_weights_for_model,
 )
+from .runner import RunnerBase
 
 
 class ONNXExportWrapper(nn.Module):

@@ -10,7 +10,6 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from ..data import ClsDataPack, create_cls_dataloader
-from ..engine import RunnerBase
 from ..utils import (
     LOSSES,
     MODELS,
@@ -20,6 +19,7 @@ from ..utils import (
     load_weights_for_model,
     print_report,
 )
+from .runner import RunnerBase
 
 
 class ClsTester(RunnerBase):

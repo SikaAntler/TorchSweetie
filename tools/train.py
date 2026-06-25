@@ -1,9 +1,9 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.engine import ClsTrainer
+from torchsweetie.engine import ClsTester, ClsTrainer
 from torchsweetie.exporter import RetrievalExporter
-from torchsweetie.tester import ClsTester, RetrievalTester
+from torchsweetie.tester import RetrievalTester
 
 
 def main(cfg) -> None:
@@ -33,14 +33,14 @@ def main(cfg) -> None:
     weights = weights[0].name
 
     if cfg.test:
-        print(f"\n==================Starting Test==================\n")
+        print("\n==================Starting Test==================\n")
 
         tester = ClsTester(cfg_file, trainer.exp_dir, weights)
-        tester.test()
+        tester.run()
         tester.report(cfg.digits)
 
     elif cfg.retrieval:
-        print(f"\n==================Starting Retrieval==================\n")
+        print("\n==================Starting Retrieval==================\n")
 
         exporter = RetrievalExporter(cfg_file, trainer.exp_dir, weights)
         exporter.export()
