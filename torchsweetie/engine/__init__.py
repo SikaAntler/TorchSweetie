@@ -1,4 +1,5 @@
 from .cls_exporter import ClsExporter
+from .cls_k_fold_cross_validator import ClsKFoldCrossValidator
 from .cls_tester import ClsTester
 from .cls_trainer import ClsTrainer
 from .runner import RunnerBase
@@ -6,6 +7,7 @@ from .trainer import EpochBasedHook, EpochBasedTrainer, IterBasedHook, IterBased
 
 __all__ = [
     "ClsExporter",
+    "ClsKFoldCrossValidator",
     "ClsTester",
     "ClsTrainer",
     "RunnerBase",

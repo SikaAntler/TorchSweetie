@@ -37,6 +37,8 @@ if __name__ == "__main__":
         required=True,
         help="path of the experimental directory (relative e.g. YYYYmmdd-HHMMSS)",
     )
+
+    # optional
     parser.add_argument(
         "--cfg-file",
         "--cfg",
