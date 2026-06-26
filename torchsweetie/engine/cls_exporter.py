@@ -72,6 +72,7 @@ class ClsExporter(RunnerBase):
         return
 
     @override
+    @torch.inference_mode()
     def run(self) -> None:
         pass
 

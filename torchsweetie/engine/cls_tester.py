@@ -59,6 +59,7 @@ class ClsTester(RunnerBase):
         return create_cls_dataloader(self.cfg.test_dataloader)
 
     @override
+    @torch.inference_mode()
     def run(self) -> None:
         assert self.dataloader
 
