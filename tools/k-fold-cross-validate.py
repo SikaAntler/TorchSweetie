@@ -77,7 +77,7 @@ if __name__ == "__main__":
     group_weights.add_argument("--epoch", type=int, help="which epoch of weights want to load")
 
     parser.add_argument(
-        "--low-rate", "--low", default=1, type=int, help="the most % low quality data"
+        "--low-rate", "--low", type=int, required=True, help="percentage of low quality data"
     )
 
     parser.add_argument(
