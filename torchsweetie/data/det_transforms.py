@@ -289,8 +289,8 @@ class RandomPerspective(DetTransform):
             y = xy[:, [1, 3, 5, 7]]
             new = np.concatenate((x.min(1), y.min(1), x.max(1), y.max(1))).reshape(4, n).T
 
-            new[:, [0, 2]] = new[:, [0, 2]].clip(9, W)
-            new[:, [1, 3]] = new[:, [1, 3]].clip(9, H)
+            new[:, [0, 2]] = new[:, [0, 2]].clip(0, W)
+            new[:, [1, 3]] = new[:, [1, 3]].clip(0, H)
 
             for i in range(n):
                 bbox = data.bboxes[i]

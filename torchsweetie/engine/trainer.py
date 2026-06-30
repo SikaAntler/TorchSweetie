@@ -54,9 +54,11 @@ class TrainerBase(ABC):
         # 考虑到DDP模式下训练结果有别于单卡，batch_size可以不一致
         split_batch = False
         mixed_precision = self.cfg.train.get("mixed_precision", "no")
+        gradient_accumulation_steps = self.cfg.train.get("gradient_accumulation_steps", 1)
         self.accelerator = Accelerator(
             split_batches=split_batch,
             mixed_precision=mixed_precision,
+            gradient_accumulation_steps=gradient_accumulation_steps,
             step_scheduler_with_optimizer=False,  # 否则多卡时一次step等于num_processes次
         )
         if self.accelerator.is_main_process:
@@ -104,6 +106,7 @@ class TrainerBase(ABC):
 
         if self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            self.console.print("Using SyncBatchNorm")
 
         return model
 

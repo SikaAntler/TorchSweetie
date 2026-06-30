@@ -47,10 +47,10 @@ class YOLOv5(nn.Module):
         if self.training:
             return x
         else:
-            return self.non_maximum_suppression(x)
+            return self.non_maximum_suppression(x, 0.001, 0.6)
 
     def non_maximum_suppression(
-        self, predictions: Tensor, conf_thres: float = 0.25, iou_thres: float = 0.45
+        self, predictions: Tensor, conf_thres: float, iou_thres: float
     ) -> list[tuple[Tensor, Tensor, Tensor]]:
         # predictions: (B, N, 5+C), where 5+C = [cx, cy, w, h, obj, c1, c2, ..., cn]
 
@@ -60,6 +60,12 @@ class YOLOv5(nn.Module):
             cls_scores, cls_idxs = torch.max(pred[:, 5:], 1)
             scores = pred[:, 4] * cls_scores
             keep = scores >= conf_thres
+            pred = pred[keep]
+            scores = scores[keep]
+            cls_idxs = cls_idxs[keep]
+
+            # max_nms
+            keep = torch.argsort(scores, descending=True)[:30000]
             pred = pred[keep]
             scores = scores[keep]
             cls_idxs = cls_idxs[keep]
@@ -84,6 +90,7 @@ class YOLOv5(nn.Module):
             boxes = torch.hstack([x1, y1, x2, y2])  # (N, 4)
 
             indices = torchvision.ops.batched_nms(boxes, scores, cls_idxs, iou_thres)
+            indices = indices[:300]
             boxes = boxes[indices]
             scores = scores[indices]
             cls_idxs = cls_idxs[indices]

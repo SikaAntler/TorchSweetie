@@ -37,7 +37,12 @@ class DetTrainer(IterBasedTrainer):
 
         self.losses: list[str] = []
 
-        self.metric = MeanAveragePrecision(class_metrics=True, backend="faster_coco_eval")
+        if self.accelerator.is_main_process:
+            self.metric = MeanAveragePrecision(
+                max_detection_thresholds=[1, 17, 300],
+                class_metrics=True,
+                backend="faster_coco_eval",
+            )
 
     @override
     def build_train_dataloader(self) -> DataLoader:
@@ -82,7 +87,7 @@ class DetTrainer(IterBasedTrainer):
         data.images = data.images.to(self.device)
         data.labels = data.labels.to(self.device)
 
-        with self.accelerator.autocast():
+        with self.accelerator.accumulate(self.model):
             outputs = self.model(data)
             loss_dict: dict[str, Tensor] = self.loss_fn(outputs, data)
             if isinstance(loss_dict, Tensor):
@@ -95,18 +100,20 @@ class DetTrainer(IterBasedTrainer):
                     loss_item = value.detach().cpu().item()
                     self.losses.append(f"{key}={loss_item:.4f}")
 
-        self.accelerator.backward(loss)
+            self.accelerator.backward(loss)
 
-        if self.clip_grad is not None:
-            self.accelerator.clip_grad_norm_(self.model.parameters(), self.max_norm, self.norm_type)
+            if self.accelerator.sync_gradients and self.clip_grad is not None:
+                self.accelerator.clip_grad_norm_(
+                    self.model.parameters(), self.max_norm, self.norm_type
+                )
 
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
+            if self.accelerator.sync_gradients and self.lr_scheduler is not None:
+                self.lr_scheduler.step()
 
-        if self.ema is not None:
+        if self.accelerator.sync_gradients and self.ema is not None:
             self.ema.update(self.accelerator.unwrap_model(self.model))
 
         self.progress.update(self.task, advance=1, losses=" ".join(self.losses))
@@ -183,13 +190,18 @@ class DetTrainer(IterBasedTrainer):
 
                     target.append({"boxes": gt_boxes, "labels": gt[:, 1].long()})
 
-                self.metric.update(preds, target)  # ty: ignore
+                self.accelerator.wait_for_everyone()
+
+                all_preds = self.accelerator.gather_for_metrics(preds)
+                all_target = self.accelerator.gather_for_metrics(target)
+
+                if self.accelerator.is_main_process:
+                    self.metric.update(all_preds, all_target)
 
                 progress.update(task, advance=1)
 
-        result = self.metric.compute()  # ty: ignore
-
         if self.accelerator.is_main_process:
+            result = self.metric.compute()  # ty: ignore
             print(result)
 
     @staticmethod

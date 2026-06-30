@@ -65,7 +65,7 @@ class YOLOv5Loss(nn.Module):
                 pxy = pxy.sigmoid() * 2 - 0.5
                 pwh = (pwh.sigmoid() * 2) ** 2 * anchors[i]
                 pbox = torch.concat((pxy, pwh), 1)  # (T, 4)
-                iou = bbox_iou(pbox, boxes[i]).squeeze()  # (T, )
+                iou = bbox_iou(pbox, boxes[i], CIoU=True).squeeze()  # (T, )
                 lbox += (1.0 - iou).mean()  # iou loss
 
                 # objectness
@@ -96,7 +96,7 @@ class YOLOv5Loss(nn.Module):
 
         tcls, tbox, indices, anch = [], [], [], []
 
-        gain = torch.ones(7, dtype=torch.long, device=device)  # (7, )
+        gain = torch.ones(7, device=device)  # (7, )
 
         # each layer has 3 anchors, the indices are 0, 1, 2
         anchor_idx = torch.arange(3, dtype=dtype, device=device)  # (3,)
@@ -127,9 +127,9 @@ class YOLOv5Loss(nn.Module):
             # Match targets to anchors
             t = targets * gain  # (3, N, 7), where 7 = [i, c, cx, cy, w, h, a]
             if nt:
-                # filter the objects with large width or height than anchors'
-                wh_ratio = t[..., 4:6] / anchors[:, None]  # (3, N, 2)
-                f = torch.max(wh_ratio, 1 / wh_ratio).max(2)[0] < self.anchor_t  # (3, N)
+                # filter the objects with large width or height than anchors
+                r = t[..., 4:6] / anchors[:, None]  # (3, N, 2)
+                f = torch.max(r, 1 / r).max(2)[0] < self.anchor_t  # (3, N)
                 t = t[f]  # (M, 7), where M is the number of remained
 
                 # offsets
