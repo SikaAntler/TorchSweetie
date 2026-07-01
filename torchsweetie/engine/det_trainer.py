@@ -88,17 +88,18 @@ class DetTrainer(IterBasedTrainer):
         data.labels = data.labels.to(self.device)
 
         with self.accelerator.accumulate(self.model):
-            outputs = self.model(data)
-            loss_dict: dict[str, Tensor] = self.loss_fn(outputs, data)
-            if isinstance(loss_dict, Tensor):
-                loss = loss_dict
-                loss_item = loss_dict.detach().cpu().item()
-                self.losses.append(f"loss={loss_item:.4f}")
-            else:
-                loss = sum(v for v in loss_dict.values())
-                for key, value in loss_dict.items():
-                    loss_item = value.detach().cpu().item()
-                    self.losses.append(f"{key}={loss_item:.4f}")
+            with self.accelerator.autocast():
+                outputs = self.model(data)
+                loss_dict: dict[str, Tensor] = self.loss_fn(outputs, data)
+                if isinstance(loss_dict, Tensor):
+                    loss = loss_dict
+                    loss_item = loss_dict.detach().cpu().item()
+                    self.losses.append(f"loss={loss_item:.4f}")
+                else:
+                    loss = sum(v for v in loss_dict.values())
+                    for key, value in loss_dict.items():
+                        loss_item = value.detach().cpu().item()
+                        self.losses.append(f"{key}={loss_item:.4f}")
 
             self.accelerator.backward(loss)
 
@@ -113,8 +114,8 @@ class DetTrainer(IterBasedTrainer):
             if self.accelerator.sync_gradients and self.lr_scheduler is not None:
                 self.lr_scheduler.step()
 
-        if self.accelerator.sync_gradients and self.ema is not None:
-            self.ema.update(self.accelerator.unwrap_model(self.model))
+            if self.accelerator.sync_gradients and self.ema is not None:
+                self.ema.update(self.accelerator.unwrap_model(self.model))
 
         self.progress.update(self.task, advance=1, losses=" ".join(self.losses))
 
@@ -136,7 +137,9 @@ class DetTrainer(IterBasedTrainer):
         if self.val_dataloader is None:
             return
 
-        self.model.eval()
+        model = self.ema.ema if self.ema else self.accelerator.unwrap_model(self.model)
+        model.eval()
+
         self.metric.reset()
 
         with Progress(
@@ -155,7 +158,8 @@ class DetTrainer(IterBasedTrainer):
                 data.images = data.images.to(self.device)
                 data.labels = data.labels.to(self.device)
 
-                predictions = self.model(data)
+                with self.accelerator.autocast():
+                    predictions = model(data)
 
                 preds: list[dict[str, Tensor]] = []
                 target: list[dict[str, Tensor]] = []
