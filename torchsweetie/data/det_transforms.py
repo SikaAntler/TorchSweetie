@@ -18,7 +18,7 @@ class Mosaic(DetTransform):
     def __init__(
         self,
         img_size: int,
-        wh_thresh: float = 16,
+        wh_thresh: float = 2,
         lwr_thresh: float = 100,
         area_thresh: float = 0.1,
     ) -> None:

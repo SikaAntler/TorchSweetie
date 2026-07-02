@@ -47,46 +47,53 @@ class YOLOv5(nn.Module):
         if self.training:
             return x
         else:
-            return self.non_maximum_suppression(x, 0.001, 0.6)
+            return self.non_maximum_suppression(x, 0.001, 0.6, True)
 
     def non_maximum_suppression(
-        self, predictions: Tensor, conf_thres: float, iou_thres: float
+        self, predictions: Tensor, conf_thres: float, iou_thres: float, multi_labels: bool = False
     ) -> list[tuple[Tensor, Tensor, Tensor]]:
         # predictions: (B, N, 5+C), where 5+C = [cx, cy, w, h, obj, c1, c2, ..., cn]
 
         results = []
 
         for pred in predictions:
-            cls_scores, cls_idxs = torch.max(pred[:, 5:], 1)
-            scores = pred[:, 4] * cls_scores
-            keep = scores >= conf_thres
-            pred = pred[keep]
-            scores = scores[keep]
-            cls_idxs = cls_idxs[keep]
+            if multi_labels:
+                conf = pred[:, 5:] * pred[:, 4:5]
+                i, j = (conf > conf_thres).nonzero(as_tuple=False).T
+                boxes = pred[i, :4]
+                scores = pred[i, 5]
+                cls_idxs = pred[i, 5 + j].long()
+            else:
+                cls_scores, cls_idxs = torch.max(pred[:, 5:], 1)
+                scores = pred[:, 4] * cls_scores
+                keep = scores >= conf_thres
+                boxes = pred[:, :4][keep]
+                scores = scores[keep]
+                cls_idxs = cls_idxs[keep]
 
             # max_nms
             keep = torch.argsort(scores, descending=True)[:30000]
-            pred = pred[keep]
+            boxes = boxes[keep]
             scores = scores[keep]
             cls_idxs = cls_idxs[keep]
 
-            if pred.numel() == 0:
+            if boxes.numel() == 0:
                 results.append(
                     (
-                        pred.new_zeros((0, 4)),
-                        pred.new_zeros((0,)),
-                        pred.new_zeros((0,), dtype=torch.long),
+                        boxes.new_zeros((0, 4)),
+                        scores.new_zeros((0,)),
+                        cls_idxs.new_zeros((0,), dtype=torch.long),
                     )
                 )
                 continue
 
             # cxcywh -> xyxy
-            half_w = pred[:, 2:3] / 2
-            half_h = pred[:, 3:4] / 2
-            x1 = pred[:, 0:1] - half_w
-            y1 = pred[:, 1:2] - half_h
-            x2 = pred[:, 0:1] + half_w
-            y2 = pred[:, 1:2] + half_h
+            half_w = boxes[:, 2:3] / 2
+            half_h = boxes[:, 3:4] / 2
+            x1 = boxes[:, 0:1] - half_w
+            y1 = boxes[:, 1:2] - half_h
+            x2 = boxes[:, 0:1] + half_w
+            y2 = boxes[:, 1:2] + half_h
             boxes = torch.hstack([x1, y1, x2, y2])  # (N, 4)
 
             indices = torchvision.ops.batched_nms(boxes, scores, cls_idxs, iou_thres)

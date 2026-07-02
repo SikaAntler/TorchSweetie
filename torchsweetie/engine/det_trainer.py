@@ -91,19 +91,20 @@ class DetTrainer(IterBasedTrainer):
             with self.accelerator.autocast():
                 outputs = self.model(data)
                 loss_dict: dict[str, Tensor] = self.loss_fn(outputs, data)
-                if isinstance(loss_dict, Tensor):
-                    loss = loss_dict
-                    loss_item = loss_dict.detach().cpu().item()
-                    self.losses.append(f"loss={loss_item:.4f}")
-                else:
-                    loss = sum(v for v in loss_dict.values())
-                    for key, value in loss_dict.items():
-                        loss_item = value.detach().cpu().item()
-                        self.losses.append(f"{key}={loss_item:.4f}")
 
-            self.accelerator.backward(loss)
+            if isinstance(loss_dict, Tensor):
+                loss = loss_dict
+                loss_item = loss_dict.detach().cpu().item()
+                self.losses.append(f"loss={loss_item:.4f}")
+            else:
+                loss = sum(v for v in loss_dict.values())
+                for key, value in loss_dict.items():
+                    loss_item = value.detach().cpu().item()
+                    self.losses.append(f"{key}={loss_item:.4f}")
 
-            if self.accelerator.sync_gradients and self.clip_grad is not None:
+            self.accelerator.backward(loss * self.accelerator.gradient_accumulation_steps)
+
+            if self.accelerator.sync_gradients and self.clip_grad:
                 self.accelerator.clip_grad_norm_(
                     self.model.parameters(), self.max_norm, self.norm_type
                 )
@@ -111,10 +112,10 @@ class DetTrainer(IterBasedTrainer):
             self.optimizer.step()
             self.optimizer.zero_grad()
 
-            if self.accelerator.sync_gradients and self.lr_scheduler is not None:
+            if self.accelerator.sync_gradients and self.lr_scheduler:
                 self.lr_scheduler.step()
 
-            if self.accelerator.sync_gradients and self.ema is not None:
+            if self.accelerator.sync_gradients and self.ema:
                 self.ema.update(self.accelerator.unwrap_model(self.model))
 
         self.progress.update(self.task, advance=1, losses=" ".join(self.losses))

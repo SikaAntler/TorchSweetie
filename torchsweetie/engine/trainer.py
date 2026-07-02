@@ -42,7 +42,7 @@ class TrainerBase(ABC):
 
         # train
         self.clip_grad = self.cfg.train.get("clip_grad")
-        if self.clip_grad is not None:
+        if self.clip_grad:
             self.max_norm = self.clip_grad.max_norm
             self.norm_type = self.clip_grad.get("norm_type", 2)
 
@@ -101,7 +101,7 @@ class TrainerBase(ABC):
 
         weights = self.cfg.model.pop("_weights_", None)
         model = MODELS.create(self.cfg.model)
-        if weights is not None:
+        if weights:
             load_weights_for_model(model, weights, self.accelerator.is_main_process)
 
         if self.cfg.train.get("sync_bn", False):
