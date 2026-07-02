@@ -23,7 +23,8 @@ class YOLOv5Head(nn.Module):
         )
         self._initialize_biases()
 
-        self.register_buffer("anchors", torch.FloatTensor(anchors).reshape(3, -1, 2))
+        # ⚠️ 不保存anchors避免加载预训练模型时被覆盖
+        self.register_buffer("anchors", torch.FloatTensor(anchors).reshape(3, -1, 2), False)
         self.anchors /= torch.FloatTensor(stride).view(-1, 1, 1)  # ty: ignore
 
         self.grid = [torch.empty(0) for _ in range(3)]

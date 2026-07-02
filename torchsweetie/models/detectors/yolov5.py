@@ -59,10 +59,9 @@ class YOLOv5(nn.Module):
         for pred in predictions:
             if multi_labels:
                 conf = pred[:, 5:] * pred[:, 4:5]
-                i, j = (conf > conf_thres).nonzero(as_tuple=False).T
-                boxes = pred[i, :4]
-                scores = pred[i, 5]
-                cls_idxs = pred[i, 5 + j].long()
+                indices, cls_idxs = (conf > conf_thres).nonzero(as_tuple=False).T
+                boxes = pred[indices, :4]
+                scores = pred[indices, cls_idxs]
             else:
                 cls_scores, cls_idxs = torch.max(pred[:, 5:], 1)
                 scores = pred[:, 4] * cls_scores

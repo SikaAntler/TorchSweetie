@@ -25,7 +25,7 @@ weights_map = {
     "model.24.": "head.",
 }
 
-ignore = ["model.24.anchor_grid"]
+ignore = ["model.24.anchors", "model.24.anchor_grid"]
 
 
 def main(cfg) -> None:
