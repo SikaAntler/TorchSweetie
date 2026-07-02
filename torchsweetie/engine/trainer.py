@@ -104,7 +104,7 @@ class TrainerBase(ABC):
         if weights:
             load_weights_for_model(model, weights, self.accelerator.is_main_process)
 
-        if self.cfg.train.get("sync_bn", False):
+        if self.accelerator.num_processes > 1 and self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
             self.console.print("Using SyncBatchNorm")
 
