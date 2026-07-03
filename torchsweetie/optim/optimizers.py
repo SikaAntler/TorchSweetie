@@ -1,9 +1,8 @@
+from rich import print
 from torch import nn
 from torch.optim import SGD, AdamW
 
-from ..utils import OPTIMIZERS
-
-_NO_WEIGHT_DECAY = ["bias", "bn", "ln", "norm"]
+from ..utils import KEY_B, KEY_E, OPTIMIZERS
 
 
 @OPTIMIZERS.register("AdamW")
@@ -16,6 +15,16 @@ def adamW(
     assert len(betas) == 2
 
     params = _set_weight_decay(model, weight_decay)
+
+    p0 = params[0]["params"]
+    p1 = params[1]["params"]
+    p2 = params[2]["params"]
+    print(
+        f"{KEY_B}AdamW{KEY_E} with parameter: "
+        f"{len(p0)} weight(decay={weight_decay})"
+        f" | {len(p1)} weight(decay=0.0)"
+        f" | {len(p2)} bias"
+    )
 
     return AdamW(params, lr, (betas[0], betas[1]), weight_decay=0.0)
 
@@ -33,29 +42,35 @@ def sgd(model: nn.Module | list[nn.Module], lr: float, momentum: float, weight_d
     return SGD(params, lr, momentum)
 
 
-def _loop_params(params: list, module: nn.Module):
-    for name, param in module.named_parameters():
-        # Ignore the params which are freezed, equal to filter(lambda ...)
-        if not param.requires_grad:
-            continue
+def _loop_params(params: list[dict], module: nn.Module):
+    assert len(params) == 3
 
-        no_wd_flag = False
-        for item in _NO_WEIGHT_DECAY:
-            if item in name:
-                no_wd_flag = True
-                break
+    bn = tuple(v for k, v in nn.__dict__.items() if "Norm" in k)
 
-        if no_wd_flag:
-            params[1]["params"].append(param)
-        else:
-            params[0]["params"].append(param)
+    for m in module.modules():
+        for name, param in m.named_parameters(recurse=False):
+            if not param.requires_grad:
+                continue
+
+            if name == "bias":
+                params[2]["params"].append(param)
+            elif name == "weight" and isinstance(m, bn):
+                params[1]["params"].append(param)
+            else:
+                params[0]["params"].append(param)
 
 
 def _set_weight_decay(model: nn.Module | list[nn.Module], weight_decay: float):
+    # 将参数分为三组
+    #   0) weights with decay
+    #   1) norm weights no decay
+    #   2) biases no decay
     params = [
         {"params": [], "weight_decay": weight_decay},
-        {"params": []},
+        {"params": [], "weight_decay": 0.0},
+        {"params": [], "weight_decay": 0.0},
     ]
+
     if isinstance(model, nn.Module):
         _loop_params(params, model)
     elif isinstance(model, list):

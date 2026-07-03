@@ -1,44 +1,54 @@
-from torch import Tensor
+import math
+
 from torch.optim import Optimizer
-from torch.optim.lr_scheduler import CosineAnnealingLR, LRScheduler
+from torch.optim.lr_scheduler import LambdaLR, LRScheduler
 
-from ..utils import LR_SCHEDULERS
+from ..utils import SCHEDULERS
 
 
-@LR_SCHEDULERS.register()
-class CosineAnnealingLRWarmUp(LRScheduler):
-    def __init__(
-        self,
-        optimizer: Optimizer,
-        num_epochs: int,
-        warmup: int = 0,
-        eta_min: float = 0.0,
-        last_epoch: int = -1,
-    ) -> None:
-        self.warmup = warmup
-        self.eta_min = eta_min
-        self.scheduler = CosineAnnealingLR(optimizer, num_epochs - warmup, eta_min, last_epoch)
-        super().__init__(optimizer, last_epoch)
+@SCHEDULERS.register()
+def LinearWarmUpLR(
+    optimizer: Optimizer,
+    num_steps: int,
+    start_factor: float = 0.01,
+    end_factor: float = 0.0,
+    warmup: int = 0,
+) -> LRScheduler:
+    assert num_steps > 0
+    assert warmup >= 0
+    assert warmup <= num_steps
+    assert 0.0 < start_factor <= 1.0
+    assert 0.0 <= end_factor <= 1.0
 
-    def step(self, epoch=None) -> None:
-        if epoch is None:
-            epoch = self.last_epoch + 1
-        self.last_epoch = epoch
-        if self.last_epoch < self.warmup:
-            for group, lr in zip(self.optimizer.param_groups, self.get_lr()):
-                group["lr"] = lr
-        elif self.last_epoch == self.warmup:
-            for group, lr in zip(self.optimizer.param_groups, self.base_lrs):
-                group["lr"] = lr
-        else:
-            self.scheduler.step()
+    def lr_lambda(step: int) -> float:
+        if step < warmup:
+            return (1 - start_factor) * step / warmup + start_factor
 
-    def get_lr(self) -> list[float | Tensor]:
-        lrs = []
-        for base_lr in self.base_lrs:
-            k = (base_lr - self.eta_min) / (self.warmup + 1)
-            b = k
-            lr = k * self.last_epoch + b
-            lrs.append(lr)
+        k = (end_factor - 1.0) / (num_steps - warmup)
+        return k * (step - warmup) + 1.0
 
-        return lrs
+    return LambdaLR(optimizer, lr_lambda)
+
+
+@SCHEDULERS.register()
+def CosineAnnealingWarmUpLR(
+    optimizer: Optimizer,
+    num_steps: int,
+    start_factor: float = 0.01,
+    end_factor: float = 0.0,
+    warmup: int = 0,
+) -> LRScheduler:
+    assert num_steps > 0
+    assert warmup >= 0
+    assert warmup <= num_steps
+    assert 0.0 < start_factor <= 1.0
+    assert 0.0 <= end_factor <= 1.0
+
+    def lr_lambda(step: int) -> float:
+        if step < warmup:
+            return (1 - start_factor) * step / warmup + start_factor
+
+        factor = 0.5 * (1.0 + math.cos(math.pi * (step - warmup) / (num_steps - warmup)))
+        return (1.0 - end_factor) * factor + end_factor
+
+    return LambdaLR(optimizer, lr_lambda)

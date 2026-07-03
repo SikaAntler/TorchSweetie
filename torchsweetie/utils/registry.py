@@ -106,4 +106,4 @@ class LRSchedulerRegistry[T](Registry[T]):
         return self[key](optimizer, **_cfg)  # ty: ignore
 
 
-LR_SCHEDULERS = LRSchedulerRegistry("lr_scheduler")
+SCHEDULERS = LRSchedulerRegistry("scheduler")

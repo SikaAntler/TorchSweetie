@@ -24,6 +24,8 @@ class ClsTrainer(EpochBasedTrainer):
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
         super().__init__(cfg_file, run_dir)
 
+        assert self.accelerator.gradient_accumulation_steps == 1
+
         # val
         if self.cfg.get("val") is None:
             self.val_interval = 1
@@ -47,8 +49,6 @@ class ClsTrainer(EpochBasedTrainer):
             self.save_interval = self.cfg.save.get("interval", 999)
             self.save_last = self.cfg.save.get("last", True)
             self.save_best = self.cfg.save.get("best", False)
-
-        self.register_hooks([])
 
     @override
     def build_train_dataloader(self) -> DataLoader:
@@ -98,42 +98,46 @@ class ClsTrainer(EpochBasedTrainer):
                 with self.accelerator.autocast():
                     outputs = self.model(data)
                     loss_dict: Tensor | dict[str, Tensor] = self.loss_fn(outputs, data)
-                    if isinstance(loss_dict, Tensor):
-                        loss = loss_dict
-                        loss_item = loss_dict.cpu().item()
-                        losses.append(f"loss={loss_item:.4f}")
-                        if "loss" not in total_loss:
-                            total_loss["loss"] = []
-                        total_loss["loss"].append(loss_item)
-                    else:
-                        loss = sum(loss_dict.values())
-                        for key, value in loss_dict.items():
-                            loss_item = value.cpu().item()
-                            losses.append(f"{key}={loss_item:.4f}")
-                            if key not in total_loss:
-                                total_loss[key] = []
-                            total_loss[key].append(loss_item)
+
+                if isinstance(loss_dict, Tensor):
+                    loss = loss_dict
+                    loss_item = loss_dict.detach().cpu().item()
+                    losses.append(f"loss={loss_item:.4f}")
+                    if "loss" not in total_loss:
+                        total_loss["loss"] = []
+                    total_loss["loss"].append(loss_item)
+                else:
+                    loss = sum(loss_dict.values())
+                    for key, value in loss_dict.items():
+                        loss_item = value.detach().cpu().item()
+                        losses.append(f"{key}={loss_item:.4f}")
+                        if key not in total_loss:
+                            total_loss[key] = []
+                        total_loss[key].append(loss_item)
 
                 self.accelerator.backward(loss)
 
-                if self.clip_grad is not None:
+                if self.clip_grad:
                     self.accelerator.clip_grad_norm_(
                         self.model.parameters(), self.max_norm, self.norm_type
                     )
 
                 self.optimizer.step()
-                self.optimizer.zero_grad()
 
                 if self.ema is not None:
                     self.ema.update(self.accelerator.unwrap_model(self.model))
 
                 # TODO total_loss reduce
 
+                self.optimizer.zero_grad()
+
                 progress.update(task, advance=1, losses=" ".join(losses))
 
-        # TODO: if not accelerator.optimizer_step_was_skipped:
-        if self.lr_scheduler is not None:
+        if self.lr_scheduler:
             self.lr_scheduler.step()
+
+        if self.momentum_scheduler:
+            self.momentum_scheduler.step()
 
         if self.accelerator.is_main_process:
             self.avg_loss.clear()

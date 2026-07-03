@@ -11,15 +11,16 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.data import DataLoader
 
+from ..optim import LambdaMomentum
 from ..utils import (
     DIR_B,
     DIR_E,
     KEY_B,
     KEY_E,
     LOSSES,
-    LR_SCHEDULERS,
     MODELS,
     OPTIMIZERS,
+    SCHEDULERS,
     URL_B,
     URL_E,
     ModelEMA,
@@ -42,7 +43,7 @@ class TrainerBase(ABC):
 
         # train
         self.clip_grad = self.cfg.train.get("clip_grad")
-        if self.clip_grad is not None:
+        if self.clip_grad:
             self.max_norm = self.clip_grad.max_norm
             self.norm_type = self.clip_grad.get("norm_type", 2)
 
@@ -54,9 +55,11 @@ class TrainerBase(ABC):
         # 考虑到DDP模式下训练结果有别于单卡，batch_size可以不一致
         split_batch = False
         mixed_precision = self.cfg.train.get("mixed_precision", "no")
+        gradient_accumulation_steps = self.cfg.train.get("gradient_accumulation_steps", 1)
         self.accelerator = Accelerator(
             split_batches=split_batch,
             mixed_precision=mixed_precision,
+            gradient_accumulation_steps=gradient_accumulation_steps,
             step_scheduler_with_optimizer=False,  # 否则多卡时一次step等于num_processes次
         )
         if self.accelerator.is_main_process:
@@ -91,6 +94,8 @@ class TrainerBase(ABC):
 
         self.prepare()
 
+        self.momentum_scheduler = self.build_momentum_scheduler()
+
         self.ema = self.build_ema()
 
     def build_model(self) -> nn.Module:
@@ -99,11 +104,12 @@ class TrainerBase(ABC):
 
         weights = self.cfg.model.pop("_weights_", None)
         model = MODELS.create(self.cfg.model)
-        if weights is not None:
+        if weights:
             load_weights_for_model(model, weights, self.accelerator.is_main_process)
 
-        if self.cfg.train.get("sync_bn", False):
+        if self.accelerator.num_processes > 1 and self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            self.console.print("Using SyncBatchNorm")
 
         return model
 
@@ -126,13 +132,12 @@ class TrainerBase(ABC):
 
         return OPTIMIZERS.create(self.cfg.optimizer, self.model)
 
-    def build_lr_scheduler(self) -> LRScheduler:
-        self.lr_scheduler = self.cfg.get("lr_scheduler")
+    def build_lr_scheduler(self) -> LRScheduler | None:
+        if "lr_scheduler" in self.cfg:
+            if "scope" not in self.cfg.lr_scheduler:
+                self.cfg.lr_scheduler.scope = self.SCOPE
 
-        if "scope" not in self.cfg.lr_scheduler:
-            self.cfg.lr_scheduler.scope = self.SCOPE
-
-        return LR_SCHEDULERS.create(self.cfg.lr_scheduler, self.optimizer)
+            return SCHEDULERS.create(self.cfg.lr_scheduler, self.optimizer)
 
     @abstractmethod
     def build_train_dataloader(self) -> DataLoader: ...
@@ -147,6 +152,13 @@ class TrainerBase(ABC):
             )
         )
 
+    def build_momentum_scheduler(self) -> LambdaMomentum | None:
+        if "momentum_scheduler" in self.cfg:
+            if "scope" not in self.cfg.momentum_scheduler:
+                self.cfg.momentum_scheduler.scope = self.SCOPE
+
+            return SCHEDULERS.create(self.cfg.momentum_scheduler, self.optimizer)
+
     def build_ema(self) -> ModelEMA | None:
         if "ema" in self.cfg:
             return ModelEMA(
@@ -155,8 +167,6 @@ class TrainerBase(ABC):
                 self.cfg.ema.tau,
                 updates=0,
             )
-        else:
-            return None
 
     @abstractmethod
     def train(self) -> None: ...
