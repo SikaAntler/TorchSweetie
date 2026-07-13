@@ -155,8 +155,9 @@ class ClsTrainer(EpochBasedTrainer):
             if self.accelerator.is_main_process:
                 msg += f" | accuracy={KEY_B}{self.accuracy:.3f}{KEY_E}"
 
+        self.print(msg)
+
         if self.accelerator.is_main_process:
-            self.console.print(msg)
             self._record()
 
         super().after_epoch()
@@ -239,7 +240,7 @@ class ClsTrainer(EpochBasedTrainer):
             model = self.accelerator.unwrap_model(self.model)
         model_file = self.exp_dir / f"{prefix}-{self.epoch}.pth"
         torch.save(model.state_dict(), model_file)
-        self.console.print(f"Saved the {prefix} model: {URL_B}{model_file}{URL_E}")
+        self.print(f"Saved the {prefix} model: {URL_B}{model_file}{URL_E}")
 
         # Loss
         if not self.loss_params:
@@ -247,4 +248,4 @@ class ClsTrainer(EpochBasedTrainer):
         loss_fn = self.accelerator.unwrap_model(self.loss_fn)
         loss_file = self.exp_dir / f"{prefix}-{self.epoch}-loss.pth"
         torch.save(loss_fn.state_dict(), loss_file)
-        self.console.print(f"Saved the {prefix} loss fn: {URL_B}{loss_file}{URL_E}")
+        self.print(f"Saved the {prefix} loss fn: {URL_B}{loss_file}{URL_E}")

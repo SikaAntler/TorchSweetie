@@ -60,23 +60,20 @@ class TrainerBase(ABC):
             split_batches=split_batch,
             mixed_precision=mixed_precision,
             gradient_accumulation_steps=gradient_accumulation_steps,
-            step_scheduler_with_optimizer=False,  # 否则多卡时一次step等于num_processes次
+            step_scheduler_with_optimizer=False,
         )
-        if self.accelerator.is_main_process:
-            self.console = Console(highlight=False)
-        if self.accelerator.is_main_process and mixed_precision != "no":
-            self.console.print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
+        if mixed_precision != "no":
+            self.print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.device = self.accelerator.device
 
         # Running directory, used to record results and models
         # Only executed by the main process
+        self.print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
         if self.accelerator.is_main_process:
-            self.console.print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
-
             date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
             self.exp_dir = run_dir.absolute() / self.cfg_file.stem / date_time
             self.exp_dir.mkdir(parents=True)
-            self.console.print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
+            self.print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
             # Save the config to the parent of experiment directory
             save_config(self.cfg, self.exp_dir.parent / "config.yaml")
 
@@ -109,7 +106,7 @@ class TrainerBase(ABC):
 
         if self.accelerator.num_processes > 1 and self.cfg.train.get("sync_bn", False):
             model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-            self.console.print("Using SyncBatchNorm")
+            self.print("Using SyncBatchNorm")
 
         return model
 
@@ -175,6 +172,15 @@ class TrainerBase(ABC):
         self.accelerator.wait_for_everyone()
         if distributed.is_available() and distributed.is_initialized():
             distributed.destroy_process_group()
+
+    def print(self, msg: str) -> None:
+        if not self.accelerator.is_main_process:
+            return
+
+        if not hasattr(self, "console"):
+            self.console = Console(highlight=False)
+
+        self.console.print(msg)
 
 
 class EpochBasedHook:
