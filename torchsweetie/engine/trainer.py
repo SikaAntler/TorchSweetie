@@ -47,8 +47,6 @@ class TrainerBase(ABC):
             self.max_norm = self.clip_grad.max_norm
             self.norm_type = self.clip_grad.get("norm_type", 2)
 
-        seed_all_rng(self.cfg.train.get("seed", 1997), self.cfg.train.get("deterministic", False))
-
         # TODO: split_batch取值问题：
         # 如果是默认的False，在多卡时总batch_size会和配置文件不一致
         # 如果是True，有batch_sampler的情况下需要重设为False
@@ -65,6 +63,11 @@ class TrainerBase(ABC):
         if mixed_precision != "no":
             self.print(f"Using mixed precision: {KEY_B}{mixed_precision}{KEY_E}")
         self.device = self.accelerator.device
+
+        # 需放在accelerate初始化之后
+        seed = self.cfg.train.get("seed", 1997)
+        deterministic = self.cfg.train.get("deterministic", False)
+        seed_all_rng(seed + self.accelerator.process_index, deterministic)
 
         # Running directory, used to record results and models
         # Only executed by the main process
