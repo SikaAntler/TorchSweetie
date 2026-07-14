@@ -3,7 +3,7 @@ from copy import deepcopy
 from typing import Any
 
 import torch
-from torch import nn
+from torch import distributed, nn
 
 
 class ModelEMA:
@@ -32,6 +32,16 @@ class ModelEMA:
                 v.mul_(self.decay).add_(model_state[k], alpha=1.0 - self.decay)
             else:
                 v.copy_(model_state[k])
+
+        self.synchronize()
+
+    @torch.inference_mode()
+    def synchronize(self, src: int = 0) -> None:
+        if not distributed.is_available() or not distributed.is_initialized():
+            return
+
+        for tensor in self.ema.state_dict().values():
+            distributed.broadcast(tensor, src)
 
     def state_dict(self) -> dict[str, Any]:
         return {
