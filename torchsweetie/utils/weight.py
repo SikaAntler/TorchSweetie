@@ -2,18 +2,18 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import torch
-from rich import print
 from rich.console import Console
 from rich.table import Table
 from torch import nn
 
 from .color import URL_B, URL_E
+from .distributed import print_main
 
 
 def load_weights(
     module: nn.Module, filename: Path | str, rm_ddp: bool = False, strict: bool = False
 ) -> None:
-    print(f"Loading weights from: {URL_B}{filename}{URL_E}")
+    print_main(f"Loading weights from: {URL_B}{filename}{URL_E}")
     weights = torch.load(filename, map_location="cpu")
 
     if rm_ddp:
@@ -56,7 +56,7 @@ def load_weights_for_model(
     model: nn.Module, weights: str, verbose: bool = False, topk: int = 10
 ) -> None:
     if verbose:
-        print(f"Loading weights from: {URL_B}{weights}{URL_E}")
+        print_main(f"Loading weights from: {URL_B}{weights}{URL_E}")
 
     model_dict = model.state_dict()
     weights_dict = torch.load(weights, "cpu")
