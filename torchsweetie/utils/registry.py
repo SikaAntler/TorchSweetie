@@ -63,9 +63,10 @@ class Registry[T]:
         return self._module_dict.values()
 
 
-BATCH_SAMPLERS = Registry("sampler")
+BATCH_SAMPLERS = Registry("batch_sampler")
 LOSSES = Registry("loss")
 MODELS = Registry("model")
+SAMPLERS = Registry("sampler")
 SIMILARITY = Registry("similarity")
 TRANSFORMS = Registry("transform")
 UTILS = Registry("utils")
