@@ -120,7 +120,7 @@ class DetTester(RunnerBase):
                 fw.write(f"{name},{value}\n")
             fw.write(f"mAP,{self.result['map'].item()}\n")
             fw.write(f"mAP50,{self.result['map_50'].item()}\n")
-            fw.write(f"mAP50,{self.result['map_75'].item()}\n")
+            fw.write(f"mAP75,{self.result['map_75'].item()}\n")
 
         self.console.print(f"Saved the report: {URL_B}{report_file}{URL_E}")
 

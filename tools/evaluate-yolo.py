@@ -93,7 +93,7 @@ def main(cfg) -> None:
             fw.write(f"{name},{value}\n")
         fw.write(f"mAP,{result['map'].item()}\n")
         fw.write(f"mAP50,{result['map_50'].item()}\n")
-        fw.write(f"mAP50,{result['map_75'].item()}\n")
+        fw.write(f"mAP75,{result['map_75'].item()}\n")
 
     print(f"Saved the report: {URL_B}{report_file}{URL_E}")
 
