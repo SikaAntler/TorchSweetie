@@ -148,7 +148,7 @@ def compare_det_accuracy(cfg) -> None:
     N = max(N, 2 + D)
 
     table = Table(title="Compare MeanAveragePrecision", show_footer=True)
-    table.add_column("Index", "Index", justify="left")
+    table.add_column("Idx", "Idx", justify="left")
 
     names = []
     table.add_column("Category", "Category", justify="right", style="cyan")
@@ -186,11 +186,11 @@ def compare_det_accuracy(cfg) -> None:
                 format_values.append(f"{value:.{D}f}")
 
         if i >= len(data) - 3:
-            index = ""
+            idx = ""
         else:
-            index = str(i + 1)
+            idx = str(i + 1)
 
-        table.add_row(index, name, *format_values)
+        table.add_row(idx, name, *format_values)
 
     console = Console()
     console.print(table)

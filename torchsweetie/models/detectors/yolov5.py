@@ -41,7 +41,7 @@ class YOLOv5(nn.Module):
             elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
                 m.inplace = True  # ty: ignore
 
-    def forward(self, data: DetDataPack) -> Tensor | list[DetResult]:
+    def forward(self, data: DetDataPack) -> Tensor | DetResult | list[DetResult]:
         x = data.images
 
         x = self.backbone(x)
@@ -55,22 +55,28 @@ class YOLOv5(nn.Module):
         else:
             return self.postprocess(x, True, 0.001)
 
-    def postprocess_export(self, predictions: Tensor) -> list[DetResult]:
-        results: list[DetResult] = []
+    def postprocess_export(self, predictions: Tensor) -> DetResult:
+        batched_boxes = []
+        batched_scores = []
+        batched_cls_idxs = []
 
         for pred in predictions:
             cls_scores, cls_idxs = torch.max(pred[:, 5:], 1)
             scores = pred[:, 4] * cls_scores
-            keep = torch.topk(scores, self.max_nms)
+            _, keep = torch.topk(scores, self.max_nms)
             boxes = pred[:, :4][keep]
             scores = scores[keep]
             cls_idxs = cls_idxs[keep]
 
             boxes = cxcywh2xyxy(boxes)
 
-            results.append(DetResult(boxes, scores, cls_idxs))
+            batched_boxes.append(boxes)
+            batched_scores.append(scores)
+            batched_cls_idxs.append(cls_idxs)
 
-        return results
+        return DetResult(
+            torch.cat(batched_boxes), torch.cat(batched_scores), torch.cat(batched_cls_idxs)
+        )
 
     def postprocess(
         self, predictions: Tensor, multi_labels: bool, conf_thres: float

@@ -90,7 +90,7 @@ def print_det_report(filename: Path, digits: int = 3) -> None:
     report = pd.read_csv(filename, header=None)
 
     table = Table(title="MeanAveragePrecision Report")
-    table.add_column("Index", justify="left")
+    table.add_column("Idx", justify="left")
     table.add_column("Category", justify="right", style="cyan")
     table.add_column("AP", justify="right")
 
@@ -100,14 +100,14 @@ def print_det_report(filename: Path, digits: int = 3) -> None:
         if i == len(report) - 3:
             table.add_row()
         if i >= len(report) - 3:
-            index = ""
+            idx = ""
             value = round(value, D)
             value = f"[bold red]{value:.{D}f}[/bold red]"
         else:
-            index = str(i + 1)
+            idx = str(i + 1)
             value = round(value, D)
             value = f"{value:.{D}f}"
-        table.add_row(index, name, value)
+        table.add_row(idx, name, value)
 
     console = Console()
     console.print(table)

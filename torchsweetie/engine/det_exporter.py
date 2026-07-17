@@ -7,10 +7,26 @@ import onnx
 import pandas as pd
 import torch
 from rich import print
-from torch import nn
+from torch import Tensor, nn
 
+from ..data import DetDataPack
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights_for_model
 from .runner import RunnerBase
+
+
+class ONNXExportWrapper(nn.Module):
+    def __init__(self, model: nn.Module, input_size: tuple[int, int, int, int]) -> None:
+        super().__init__()
+
+        self.model = model
+
+        bs, _, H, W = input_size
+        # self.
+
+    def forward(self, x: Tensor) -> Tensor:
+        data = DetDataPack(torch.tensor([]), x, [], torch.tensor([]), torch.tensor([]))
+
+        return self.model(data)
 
 
 class DetExporter(RunnerBase):
@@ -30,6 +46,8 @@ class DetExporter(RunnerBase):
         self.cfg.model.pop("_weights_", None)
         model = MODELS.create(self.cfg.model)
         load_weights_for_model(model, str(self.weights), True)
+
+        model.export = True
 
         return model
 
@@ -51,15 +69,15 @@ class DetExporter(RunnerBase):
         assert len(input_size) == 4
         x = torch.randn(input_size)
 
-        self.model.eval()
-
-        setattr(self.model, "export", True)
+        model = ONNXExportWrapper(self.model, input_size)
+        model.eval()
 
         if self.half:
             x = x.half()
-            self.model.half()
+            model.half()
 
         x = x.cuda()
+        model.cuda()
 
         if onnx_file is None:
             f = self.weights.with_suffix(".onnx")
@@ -67,7 +85,7 @@ class DetExporter(RunnerBase):
             f = self.exp_dir / onnx_file
 
         torch.onnx.export(
-            self.model,
+            model,
             x,  # ty: ignore
             f,
             input_names=["input"],

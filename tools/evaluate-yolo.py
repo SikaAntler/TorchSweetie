@@ -7,7 +7,7 @@ from rich import print
 from torch import Tensor
 from torchmetrics.detection import MeanAveragePrecision
 
-from torchsweetie.utils import cxcywh2xyxy, denormalize
+from torchsweetie.utils import URL_B, URL_E, cxcywh2xyxy, denormalize
 
 
 def convert_to(label_file: Path, img_w: int, img_h: int) -> dict[str, Tensor]:
@@ -41,11 +41,15 @@ def convert_to(label_file: Path, img_w: int, img_h: int) -> dict[str, Tensor]:
 
 
 def main(cfg) -> None:
-    directory = Path(cfg.directory)
-    classes_file = directory / "classes.csv"
-    classes = pd.read_csv(classes_file, header=None)[0].to_list()
+    data_dir = Path(cfg.data_dir)
+    val_dir = Path(cfg.val_dir)
+    run_dir = Path(cfg.run_dir)
 
-    target_labels_dir = directory / "labels/val/"
+    exp_dir = run_dir / val_dir.name
+    if not exp_dir.exists():
+        exp_dir.mkdir()
+
+    target_labels_dir = data_dir / "labels/val/"
     preds_labels_dir = Path(cfg.val_dir) / "labels/"
 
     target_label_files = list(f.name for f in target_labels_dir.iterdir())
@@ -77,19 +81,39 @@ def main(cfg) -> None:
 
     metric.update(preds, target)  # ty: ignore
     result = metric.compute()  # ty: ignore
-    print(result)
-    # for v in result["map_per_class"]:
-    #     print(f"{v.item():.3f}")
+
+    classes_file = data_dir / "classes.csv"
+    classes = pd.read_csv(classes_file, header=None)[0].to_list()
+
+    report_file = exp_dir / "report.csv"
+
+    with open(report_file, "w", encoding="utf-8") as fw:
+        for name, value in zip(classes, result["map_per_class"]):
+            value = value.item()
+            fw.write(f"{name},{value}\n")
+        fw.write(f"mAP,{result['map'].item()}\n")
+        fw.write(f"mAP50,{result['map_50'].item()}\n")
+        fw.write(f"mAP50,{result['map_75'].item()}\n")
+
+    print(f"Saved the report: {URL_B}{report_file}{URL_E}")
 
 
 if __name__ == "__main__":
     parser = ArgumentParser()
 
-    parser.add_argument("directory", type=str)
+    parser.add_argument("data_dir", type=str)
 
     parser.add_argument("--val-dir", type=str, required=True)
 
     parser.add_argument("--img-w", default=1280, type=int)
     parser.add_argument("--img-h", default=1280, type=int)
+
+    parser.add_argument(
+        "--run-dir",
+        "--run",
+        default="runs",
+        type=str,
+        help="path of the running directory (relative)",
+    )
 
     main(parser.parse_args())
