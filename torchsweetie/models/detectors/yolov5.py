@@ -28,6 +28,9 @@ class YOLOv5(nn.Module):
 
         self.max_nms = max_nms
 
+        self.multi_labels = True
+        self.conf_threshold = 0.001
+
         self.initialize_weights()
 
     def initialize_weights(self) -> None:
@@ -53,7 +56,7 @@ class YOLOv5(nn.Module):
         elif self.export:
             return self.postprocess_export(x)
         else:
-            return self.postprocess(x, True, 0.001)
+            return self.postprocess(x)
 
     def postprocess_export(self, predictions: Tensor) -> DetResult:
         batched_boxes = []
@@ -78,23 +81,21 @@ class YOLOv5(nn.Module):
             torch.cat(batched_boxes), torch.cat(batched_scores), torch.cat(batched_cls_idxs)
         )
 
-    def postprocess(
-        self, predictions: Tensor, multi_labels: bool, conf_thres: float
-    ) -> list[DetResult]:
+    def postprocess(self, predictions: Tensor) -> list[DetResult]:
         # predictions: (B, N, 5+C), where 5+C = [cx, cy, w, h, obj, c1, c2, ..., cn]
 
         results: list[DetResult] = []
 
         for pred in predictions:
-            if multi_labels:
+            if self.multi_labels:
                 conf = pred[:, 5:] * pred[:, 4:5]
-                indices, cls_idxs = (conf > conf_thres).nonzero(as_tuple=False).T
+                indices, cls_idxs = (conf > self.conf_threshold).nonzero(as_tuple=False).T
                 boxes = pred[indices, :4]
                 scores = conf[indices, cls_idxs]
             else:
                 cls_scores, cls_idxs = torch.max(pred[:, 5:], 1)
                 scores = pred[:, 4] * cls_scores
-                keep = scores >= conf_thres
+                keep = scores >= self.conf_threshold
                 boxes = pred[:, :4][keep]
                 scores = scores[keep]
                 cls_idxs = cls_idxs[keep]

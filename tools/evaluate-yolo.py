@@ -42,15 +42,15 @@ def convert_to(label_file: Path, img_w: int, img_h: int) -> dict[str, Tensor]:
 
 def main(cfg) -> None:
     data_dir = Path(cfg.data_dir)
-    val_dir = Path(cfg.val_dir)
+    yolo_exp_dir = Path(cfg.yolo_exp_dir)
     run_dir = Path(cfg.run_dir)
 
-    exp_dir = run_dir / val_dir.name
+    exp_dir = run_dir / yolo_exp_dir.name
     if not exp_dir.exists():
         exp_dir.mkdir()
 
     target_labels_dir = data_dir / "labels/val/"
-    preds_labels_dir = Path(cfg.val_dir) / "labels/"
+    preds_labels_dir = Path(yolo_exp_dir) / "labels/"
 
     target_label_files = list(f.name for f in target_labels_dir.iterdir())
     preds_filenames = list(f.name for f in preds_labels_dir.iterdir())
@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     parser.add_argument("data_dir", type=str)
 
-    parser.add_argument("--val-dir", type=str, required=True)
+    parser.add_argument("--yolo-exp-dir", "--yolo", type=str, required=True)
 
     parser.add_argument("--img-w", default=1280, type=int)
     parser.add_argument("--img-h", default=1280, type=int)

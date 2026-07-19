@@ -29,14 +29,21 @@ class DetTester(RunnerBase):
         cfg_file: Path,
         exp_dir: Path,
         weights: str,
-        iou_threshold: float = 0.6,
-        max_detection: int = 300,
+        conf_threshold: float,
+        iou_threshold: float,
+        max_detection: int,
     ) -> None:
         super().__init__(cfg_file, exp_dir, weights)
 
         if self.cfg.train.get("mixed_precision", "no") == "fp16":
             self.model.half()
         self.model.cuda()
+
+        if hasattr(self.model, "conf_threshold"):
+            setattr(self.model, "conf_threshold", conf_threshold)
+
+        if hasattr(self.model, "multi_labels"):
+            setattr(self.model, "multi_labels", False)
 
         self.iou_threshold = iou_threshold
 

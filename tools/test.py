@@ -26,9 +26,9 @@ def main(cfg) -> None:
         case "classification":
             tester = ClsTester(cfg_file, exp_dir, weights)
         case "detection":
-            iou_threshold = cfg.iou_threshold if cfg.iou_threshold else 0.6
-            max_detection = cfg.max_detection if cfg.max_detection else 300
-            tester = DetTester(cfg_file, exp_dir, weights, iou_threshold, max_detection)
+            tester = DetTester(
+                cfg_file, exp_dir, weights, cfg.conf_threshold, cfg.iou_threshold, cfg.max_detection
+            )
 
     tester.run()
     tester.report(cfg.digits)
@@ -70,8 +70,17 @@ if __name__ == "__main__":
     group_weights.add_argument("--epoch", type=int, help="which epoch of weights want to load")
 
     parser.add_argument(
+        "--conf-threshold",
+        "--conf",
+        default=0.25,
+        type=float,
+        help="conf threshold for post processing (detection only)",
+    )
+
+    parser.add_argument(
         "--iou-threshold",
-        "--iou-thresh",
+        "--iou",
+        default=0.45,
         type=float,
         help="iou threshold for post processing (detection only)",
     )
@@ -79,6 +88,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max-detection",
         "--max-det",
+        default=300,
         type=int,
         help="max detection for post processing (detection only)",
     )
