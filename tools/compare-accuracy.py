@@ -218,19 +218,23 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "exp_list",
+        "--exp-list",
         nargs="+",
         type=str,
         help="list of some experimental directories (e.g. path/to/exp_name/YYYYmmdd-HHMMSS)",
     )
+
     parser.add_argument(
         "--aliases",
         nargs="+",
         type=str,
         help="list of some aliases for experimental directories",
     )
+
     parser.add_argument("--digits", default=3, type=int, help="digits remain for accuracy")
+
     parser.add_argument("--interval", default=0, type=int, help="interval for adding an empty line")
+
     parser.add_argument("--old", action="store_true", help="whether to print in old format")
 
     main(parser.parse_args())

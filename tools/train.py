@@ -44,7 +44,7 @@ def main(cfg) -> None:
             case "classification":
                 tester = ClsTester(cfg_file, trainer.exp_dir, weights)
             case "detection":
-                tester = DetTester(cfg_file, trainer.exp_dir, weights)
+                tester = DetTester(cfg_file, trainer.exp_dir, weights, 0.25, 0.45, 300)
         tester.run()
         tester.report(cfg.digits)
 
