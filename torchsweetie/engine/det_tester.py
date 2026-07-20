@@ -35,8 +35,7 @@ class DetTester(RunnerBase):
     ) -> None:
         super().__init__(cfg_file, exp_dir, weights)
 
-        if self.cfg.train.get("mixed_precision", "no") == "fp16":
-            self.model.half()
+        self.half = self.cfg.train.get("mixed_precision", "no") == "fp16"
         self.model.cuda()
 
         if hasattr(self.model, "conf_threshold"):
@@ -98,7 +97,10 @@ class DetTester(RunnerBase):
                 data.cls_idxs = data.cls_idxs.cuda()
                 data.boxes = data.boxes.cuda()
 
-                with torch.autocast("cuda"):
+                if self.half:
+                    with torch.autocast("cuda"):
+                        predictions: list[DetResult] = self.model(data)
+                else:
                     predictions: list[DetResult] = self.model(data)
 
                 preds, target = convert_to_preds_and_target(
