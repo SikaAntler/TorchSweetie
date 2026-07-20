@@ -6,32 +6,48 @@ import torch
 from rich import print
 from torch import Tensor
 from torchmetrics.detection import MeanAveragePrecision
+from tqdm import tqdm
 
 from torchsweetie.utils import URL_B, URL_E, cxcywh2xyxy, denormalize
 
 
-def convert_to(label_file: Path, img_w: int, img_h: int) -> dict[str, Tensor]:
+def convert_to(label_file: Path, img_w: int, img_h: int, predicted: bool) -> dict[str, Tensor]:
     with open(label_file, "r", encoding="utf-8") as fr:
         lines = fr.readlines()
+
+    if len(lines) == 0:
+        data = {
+            "boxes": torch.zeros((0, 4)),
+            "labels": torch.zeros((0,)),
+        }
+        if predicted:
+            data["scores"] = torch.zeros((0, 4))
+        return data
 
     boxes, scores, labels = [], [], []
 
     for line in lines:
         items = line.rstrip().split(" ")
-        assert len(items) in [5, 6]
-
         idx = int(items[0])
         cx = float(items[1])
         cy = float(items[2])
         w = float(items[3])
         h = float(items[4])
         boxes.append(torch.tensor([cx, cy, w, h]))
-        if len(items) == 6:
-            scores.append(float(items[5]))
         labels.append(idx)
+        if predicted:
+            scores.append(float(items[5]))
 
-    boxes = cxcywh2xyxy(torch.vstack(boxes))
-    denormalize(boxes, img_w, img_h)
+    boxes = torch.vstack(boxes)
+    boxes = cxcywh2xyxy(boxes)
+
+    if predicted:
+        boxes[:, 0] *= img_w
+        boxes[:, 1] *= img_h
+        boxes[:, 2] *= img_w
+        boxes[:, 3] *= img_h
+    else:
+        denormalize(boxes, img_w, img_h)
 
     data = {"boxes": boxes, "labels": torch.LongTensor(labels)}
     if len(scores) != 0:
@@ -53,8 +69,9 @@ def main(cfg) -> None:
     preds_labels_dir = Path(yolo_exp_dir) / "labels/"
 
     target_label_files = list(f.name for f in target_labels_dir.iterdir())
-    preds_filenames = list(f.name for f in preds_labels_dir.iterdir())
-    print(len(target_label_files), len(preds_filenames))
+    preds_label_files = list(f.name for f in preds_labels_dir.iterdir())
+    print(f"target: {len(target_label_files)} files")
+    print(f" preds: {len(preds_label_files)} files")
 
     target = []
     preds = []
@@ -63,12 +80,12 @@ def main(cfg) -> None:
         max_detection_thresholds=[1, 17, 300], class_metrics=True, backend="faster_coco_eval"
     )
 
-    for target_name in target_label_files:
-        target_ = convert_to(target_labels_dir / target_name, cfg.img_w, cfg.img_h)
+    for target_name in tqdm(target_label_files, desc="convert from yolo", ncols=100):
+        target_ = convert_to(target_labels_dir / target_name, cfg.img_w, cfg.img_h, False)
         target.append(target_)
 
-        if target_name in preds_filenames:
-            pred = convert_to(preds_labels_dir / target_name, cfg.img_w, cfg.img_h)
+        if target_name in preds_label_files:
+            pred = convert_to(preds_labels_dir / target_name, cfg.img_w, cfg.img_h, True)
             preds.append(pred)
         else:
             preds.append(
@@ -79,8 +96,10 @@ def main(cfg) -> None:
                 }
             )
 
+    print("computing metric...")
     metric.update(preds, target)  # ty: ignore
     result = metric.compute()  # ty: ignore
+    print("computing finished...")
 
     classes_file = data_dir / "classes.csv"
     classes = pd.read_csv(classes_file, header=None)[0].to_list()
