@@ -146,10 +146,8 @@ class TrainerBase(ABC):
     def build_val_dataloader(self) -> DataLoader | None: ...
 
     def prepare(self) -> None:
-        self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader = (
-            self.accelerator.prepare(
-                self.model, self.loss_fn, self.optimizer, self.lr_scheduler, self.train_dataloader
-            )
+        self.model, self.loss_fn, self.optimizer, self.train_dataloader = self.accelerator.prepare(
+            self.model, self.loss_fn, self.optimizer, self.train_dataloader
         )
 
     def build_momentum_scheduler(self) -> LambdaMomentum | None:
