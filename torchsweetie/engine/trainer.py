@@ -73,7 +73,7 @@ class TrainerBase(ABC):
         # Only executed by the main process
         self.print(f"Configuration file: {URL_B}{self.cfg_file}{URL_E}")
         if self.accelerator.is_main_process:
-            date_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+            date_time = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
             self.exp_dir = run_dir.absolute() / self.cfg_file.stem / date_time
             self.exp_dir.mkdir(parents=True)
             self.print(f"Experimental directory: {DIR_B}{self.exp_dir}{DIR_E}")
@@ -220,7 +220,8 @@ class EpochBasedTrainer(TrainerBase):
     @override
     def train(self) -> None:
         self.before_train()
-        for self.epoch in range(self.num_epochs):
+        for epoch in range(self.num_epochs):
+            self.epoch = epoch
             self.before_epoch()
             self.run_epoch()
             self.after_epoch()
@@ -266,7 +267,7 @@ class IterBasedTrainer(TrainerBase):
     def __init__(self, cfg_file: Path, run_dir: Path) -> None:
         super().__init__(cfg_file, run_dir)
 
-        self.iter = 0
+        self.iter: int
 
         self.num_iters = self.cfg.train.num_iters
 
@@ -280,7 +281,8 @@ class IterBasedTrainer(TrainerBase):
     @override
     def train(self) -> None:
         self.before_train()
-        for self.iter in range(self.num_iters):
+        for i in range(self.num_iters):
+            self.iter = i
             self.before_iter()
             self.run_iter()
             self.after_iter()
