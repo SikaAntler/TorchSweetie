@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from rich import print
 from torch import nn
 from torch.optim import SGD, AdamW
@@ -9,7 +11,7 @@ from ..utils import KEY_B, KEY_E, OPTIMIZERS
 def adamW(
     model: nn.Module | list[nn.Module],
     lr: float,
-    betas: list[float] = [0.9, 0.999],
+    betas: Sequence[float] = (0.9, 0.999),
     weight_decay: float = 1e-2,
 ):
     assert len(betas) == 2

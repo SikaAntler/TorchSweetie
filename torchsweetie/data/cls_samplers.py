@@ -1,5 +1,5 @@
+from collections.abc import Iterator, Sized
 from pathlib import Path
-from typing import Iterator, Sized
 
 import numpy as np
 import pandas as pd

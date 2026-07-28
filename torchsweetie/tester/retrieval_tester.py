@@ -53,7 +53,7 @@ class RetrievalTester:
 
     @torch.no_grad()
     def test(self) -> None:
-        pbar = tqdm(desc=f"Testing", total=len(self.dataloader), ncols=self.NCOLS)
+        pbar = tqdm(desc="Testing", total=len(self.dataloader), ncols=self.NCOLS)
 
         self.model.eval()
 

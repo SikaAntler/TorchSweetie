@@ -1,5 +1,6 @@
 import random
-from typing import Literal, Sequence, override
+from collections.abc import Sequence
+from typing import Literal, override
 
 import cv2
 import numpy as np

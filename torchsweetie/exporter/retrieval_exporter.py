@@ -45,10 +45,10 @@ class RetrievalExporter:
 
     @torch.no_grad()
     def export(self) -> None:
-        pbar = tqdm(desc=f"Exporting", total=len(self.dataloader), ncols=self.NCOLS)
+        pbar = tqdm(desc="Exporting", total=len(self.dataloader), ncols=self.NCOLS)
 
         if hasattr(self, "embeddings"):
-            tqdm.write(f"You may run the test twice, since embeddings is not empty.")
+            tqdm.write("You may run the test twice, since embeddings is not empty.")
 
         self.model.eval()
 

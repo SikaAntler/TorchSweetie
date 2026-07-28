@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from natsort import natsort
 from pypinyin import Style, pinyin
 

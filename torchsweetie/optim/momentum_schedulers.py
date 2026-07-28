@@ -1,4 +1,4 @@
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
 
 from accelerate.optimizer import AcceleratedOptimizer
 
