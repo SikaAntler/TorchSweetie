@@ -1,10 +1,8 @@
-from typing import Optional
-
 from rich import print
 from torch import nn
 from torchvision.models import EfficientNet, efficientnet
 
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 SCOPE = "classification"
 
@@ -22,7 +20,7 @@ _efficientnet_models = {
 
 
 def _init_model(
-    model_name: str, num_classes: int, dropout: float, weights: Optional[str] = None
+    model_name: str, num_classes: int, dropout: float, weights: str | None = None
 ) -> EfficientNet:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
@@ -46,15 +44,15 @@ def _init_model(
 
 
 @MODELS.register(scope=SCOPE)
-def efficientnet_v2_s(num_classes: int, weights: Optional[str] = None) -> EfficientNet:
+def efficientnet_v2_s(num_classes: int, weights: str | None = None) -> EfficientNet:
     return _init_model("s", num_classes, 0.2, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def efficientnet_v2_m(num_classes: int, weights: Optional[str] = None) -> EfficientNet:
+def efficientnet_v2_m(num_classes: int, weights: str | None = None) -> EfficientNet:
     return _init_model("m", num_classes, 0.3, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def efficientnet_v2_l(num_classes: int, weights: Optional[str] = None) -> EfficientNet:
+def efficientnet_v2_l(num_classes: int, weights: str | None = None) -> EfficientNet:
     return _init_model("l", num_classes, 0.4, weights)

@@ -117,14 +117,7 @@ class TrainerBase(ABC):
         if "scope" not in self.cfg.loss:
             self.cfg.loss.scope = self.SCOPE
 
-        loss_fn = LOSSES.create(self.cfg.loss)
-
-        if list(loss_fn.parameters()) != []:
-            self.loss_params = True
-        else:
-            self.loss_params = False
-
-        return loss_fn
+        return LOSSES.create(self.cfg.loss)
 
     def build_optimizer(self) -> Optimizer:
         if "scope" not in self.cfg.optimizer:

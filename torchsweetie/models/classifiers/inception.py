@@ -1,10 +1,8 @@
-from typing import Optional
-
 from rich import print
 from torch import nn
 from torchvision.models import Inception3, inception
 
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 SCOPE = "classification"
 
@@ -17,7 +15,7 @@ _inception_models = {
 }
 
 
-def _init_inception(model_name: str, num_classes: int, weights: Optional[str] = None) -> Inception3:
+def _init_inception(model_name: str, num_classes: int, weights: str | None = None) -> Inception3:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
         print(
@@ -40,5 +38,5 @@ def _init_inception(model_name: str, num_classes: int, weights: Optional[str] = 
 
 
 @MODELS.register(scope=SCOPE)
-def inception_v3(num_classes: int, weights: Optional[str] = None) -> Inception3:
+def inception_v3(num_classes: int, weights: str | None = None) -> Inception3:
     return _init_inception("inception_v3", num_classes, weights)

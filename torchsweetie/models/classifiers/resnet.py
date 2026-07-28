@@ -1,10 +1,9 @@
 import torch
-from rich import print
 from torch import Tensor, nn
 from torchvision.models import resnet
 
-from ..data import ClsDataPack
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, print_main
+from .cls_model import ClsModel
 
 SCOPE = "classification"
 
@@ -43,12 +42,8 @@ _num_features = {
 
 
 class ResNet(nn.Module):
-    def __init__(
-        self, model: resnet.ResNet, num_features: int, num_classes: int, remap: int | None = None
-    ) -> None:
+    def __init__(self, model: resnet.ResNet, num_features: int, remap: int | None) -> None:
         super().__init__()
-
-        # self.num_classes = num_classes
 
         self.conv1 = model.conv1
         self.bn1 = model.bn1
@@ -62,24 +57,9 @@ class ResNet(nn.Module):
 
         self.avgpool = model.avgpool
 
-        if remap is None:
-            self.remap = None
-        else:
-            self.remap = nn.Linear(num_features, remap)
+        self.remap = nn.Linear(num_features, remap) if remap else None
 
-        if num_classes != 0:
-            if remap is not None:
-                self.fc = nn.Linear(remap, num_classes)
-            elif num_classes == model.fc.weight.shape[0]:
-                self.fc = model.fc
-            else:
-                self.fc = nn.Linear(num_features, num_classes)
-        else:
-            self.fc = nn.Identity()
-
-    def forward(self, data: ClsDataPack) -> Tensor:
-        x = data.inputs
-
+    def forward(self, x: Tensor) -> Tensor:
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -93,68 +73,73 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
 
-        if self.remap is not None:
+        if self.remap:
             x = self.remap(x)
-
-        x = self.fc(x)
 
         return x
 
 
 def _init_model(
     model_name: str, num_classes: int, pretrained: bool = False, remap: int | None = None
-) -> ResNet:
+) -> ClsModel:
     if pretrained:
         pretrained_weights = _pretrained_weights[model_name]
-        print(
+        print_main(
             f"Using {KEY_B}pretrained{KEY_E} weights",
             f"from {KEY_B}torchvision{KEY_E}({URL_B}{pretrained_weights.url}{URL_E})",
         )
-        _model = _resnet_models[model_name](weights=pretrained_weights)
-        model = ResNet(_model, _num_features[model_name], num_classes, remap)
+    else:
+        pretrained_weights = None
 
-    return model
+    _model = _resnet_models[model_name](weights=pretrained_weights)
+    backbone = ResNet(_model, _num_features[model_name], remap)
+
+    head = nn.Linear(_num_features[model_name], num_classes)
+
+    return ClsModel(backbone, head)
 
 
 @MODELS.register(scope=SCOPE)
-def resnet18(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ResNet:
+def resnet18(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ClsModel:
     return _init_model("resnet18", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
-def resnet34(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ResNet:
+def resnet34(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ClsModel:
     return _init_model("resnet34", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
-def resnet50(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ResNet:
+def resnet50(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ClsModel:
     return _init_model("resnet50", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
-def resnet101(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ResNet:
+def resnet101(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ClsModel:
     return _init_model("resnet101", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
-def resnet152(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ResNet:
+def resnet152(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ClsModel:
     return _init_model("resnet152", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
-def resnext50_32x4d(num_classes: int, pretrained: bool = False, remap: int | None = None) -> ResNet:
+def resnext50_32x4d(
+    num_classes: int, pretrained: bool = False, remap: int | None = None
+) -> ClsModel:
     return _init_model("resnext50_32x4d", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
 def resnext101_32x8d(
     num_classes: int, pretrained: bool = False, remap: int | None = None
-) -> ResNet:
+) -> ClsModel:
     return _init_model("resnext101_32x8d", num_classes, pretrained, remap)
 
 
 @MODELS.register(scope=SCOPE)
 def resnext101_64x4d(
     num_classes: int, pretrained: bool = False, remap: int | None = None
-) -> ResNet:
+) -> ClsModel:
     return _init_model("resnext101_64x4d", num_classes, pretrained, remap)

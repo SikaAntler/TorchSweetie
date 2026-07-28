@@ -1,11 +1,10 @@
 from collections import OrderedDict
-from typing import Optional
 
 from rich import print
 from torch import nn
 from torchvision.models import VisionTransformer, vision_transformer
 
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 SCOPE = "classification"
 
@@ -34,9 +33,7 @@ _hidden_dims = {
 }
 
 
-def _init_model(
-    model_name: str, num_classes: int, weights: Optional[str] = None
-) -> VisionTransformer:
+def _init_model(model_name: str, num_classes: int, weights: str | None = None) -> VisionTransformer:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
         print(
@@ -61,25 +58,25 @@ def _init_model(
 
 
 @MODELS.register(scope=SCOPE)
-def vit_b_16(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
+def vit_b_16(num_classes: int, weights: str | None = None) -> VisionTransformer:
     return _init_model("vit_b_16", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def vit_b_32(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
+def vit_b_32(num_classes: int, weights: str | None = None) -> VisionTransformer:
     return _init_model("vit_b_32", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def vit_l_16(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
+def vit_l_16(num_classes: int, weights: str | None = None) -> VisionTransformer:
     return _init_model("vit_l_16", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def vit_l_32(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
+def vit_l_32(num_classes: int, weights: str | None = None) -> VisionTransformer:
     return _init_model("vit_l_32", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def vit_h_14(num_classes: int, weights: Optional[str] = None) -> VisionTransformer:
+def vit_h_14(num_classes: int, weights: str | None = None) -> VisionTransformer:
     return _init_model("vit_h_14", num_classes, weights)

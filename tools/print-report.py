@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 
-from torchsweetie.utils import print_report, print_report_old
+from torchsweetie.utils import print_cls_report, print_report_old
 
 
 def main(cfg) -> None:
@@ -10,7 +10,7 @@ def main(cfg) -> None:
     if cfg.old:
         print_report_old(filename, cfg.digits)
     else:
-        print_report(filename, cfg.digits, cfg.interval)
+        print_cls_report(filename, cfg.digits, cfg.interval)
 
 
 if __name__ == "__main__":

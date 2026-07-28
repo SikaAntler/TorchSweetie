@@ -1,10 +1,8 @@
-from typing import Optional
-
 from rich import print
 from torch import nn
 from torchvision.models import VGG, vgg
 
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 SCOPE = "classification"
 
@@ -19,7 +17,7 @@ _vgg_models = {
 }
 
 
-def _init_model(model_name: str, num_classes: int, dropout, weights: Optional[str] = None) -> VGG:
+def _init_model(model_name: str, num_classes: int, dropout, weights: str | None = None) -> VGG:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
         print(
@@ -48,10 +46,10 @@ def _init_model(model_name: str, num_classes: int, dropout, weights: Optional[st
 
 
 @MODELS.register(scope=SCOPE)
-def vgg16(num_classes: int, dropout: float = 0.5, weights: Optional[str] = None) -> VGG:
+def vgg16(num_classes: int, dropout: float = 0.5, weights: str | None = None) -> VGG:
     return _init_model("vgg16", num_classes, dropout, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def vgg19(num_classes: int, dropout: float = 0.5, weights: Optional[str] = None) -> VGG:
+def vgg19(num_classes: int, dropout: float = 0.5, weights: str | None = None) -> VGG:
     return _init_model("vgg19", num_classes, dropout, weights)

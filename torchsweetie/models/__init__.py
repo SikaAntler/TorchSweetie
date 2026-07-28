@@ -1,1 +1,3 @@
-from . import convnext, efficientnet, inception, resnet, resnet_sc, swin, vgg, vit  # noqa: F401
+from . import classifiers, detectors
+
+__all__ = ["classifiers", "detectors"]

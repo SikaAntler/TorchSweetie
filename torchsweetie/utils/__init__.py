@@ -8,7 +8,7 @@ from .distributed import (
     wait_for_everyone,
 )
 from .ema import ModelEMA
-from .print_report import print_report, print_report_old
+from .print_report import print_cls_report, print_report_old
 from .registry import (
     BATCH_SAMPLERS,
     LOSSES,
@@ -27,23 +27,11 @@ from .string_utils import display_len, format_string, is_chinese
 from .weight import load_weights, load_weights_for_model
 
 __all__ = [
+    "BATCH_SAMPLERS",
     "DIR_B",
     "DIR_E",
-    "KEY_E",
     "KEY_B",
-    "URL_B",
-    "URL_E",
-    "load_config",
-    "save_config",
-    "get_state",
-    "is_local_main_process",
-    "is_main_process",
-    "print_main",
-    "wait_for_everyone",
-    "ModelEMA",
-    "print_report",
-    "print_report_old",
-    "BATCH_SAMPLERS",
+    "KEY_E",
     "LOSSES",
     "MODELS",
     "OPTIMIZERS",
@@ -51,13 +39,25 @@ __all__ = [
     "SCHEDULERS",
     "SIMILARITY",
     "TRANSFORMS",
+    "URL_B",
+    "URL_E",
     "UTILS",
+    "ModelEMA",
     "Registry",
-    "seed_all_rng",
-    "smart_sort",
     "display_len",
     "format_string",
+    "get_state",
     "is_chinese",
+    "is_local_main_process",
+    "is_main_process",
+    "load_config",
     "load_weights",
     "load_weights_for_model",
+    "print_cls_report",
+    "print_main",
+    "print_report_old",
+    "save_config",
+    "seed_all_rng",
+    "smart_sort",
+    "wait_for_everyone",
 ]

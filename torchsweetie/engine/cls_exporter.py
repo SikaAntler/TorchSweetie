@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, override
+from typing import Literal, override
 
 import onnx
 import pandas as pd
@@ -10,21 +10,20 @@ from rich import print
 from torch import Tensor, nn
 
 from ..data import ClsDataPack
+from ..models.classifiers import ClsModel
 from ..utils import (
     KEY_B,
     KEY_E,
-    LOSSES,
     MODELS,
     URL_B,
     URL_E,
-    load_weights,
     load_weights_for_model,
 )
 from .runner import RunnerBase
 
 
 class ONNXExportWrapper(nn.Module):
-    def __init__(self, model: nn.Module, input_size: tuple[int, int, int, int]) -> None:
+    def __init__(self, model: ClsModel, input_size: tuple[int, int, int, int]) -> None:
         super().__init__()
 
         self.model = model
@@ -34,8 +33,11 @@ class ONNXExportWrapper(nn.Module):
         self.ori_sizes = torch.tensor([(H, W)] * batch_size)
 
     def forward(self, x: Tensor) -> Tensor:
-        data = ClsDataPack(x, self.targets, self.ori_sizes)
-        x = self.model(data)
+        if self.model.requires_data_pack:
+            data = ClsDataPack(x, self.targets, self.ori_sizes)
+            x = self.model(data)
+        else:
+            x = self.model(x)
 
         return x
 
@@ -43,20 +45,13 @@ class ONNXExportWrapper(nn.Module):
 class ClsExporter(RunnerBase):
     SCOPE = "classification"
 
-    def __init__(
-        self, cfg_file: Path, exp_dir: Path, weights: str, requires_loss: bool = True
-    ) -> None:
+    def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
         super().__init__(cfg_file, exp_dir, weights)
 
-        if requires_loss:
-            loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
-            if any(True for _ in loss_fn.parameters()):
-                loss_weights = self.exp_dir / f"{self.weights.stem}-loss{self.weights.suffix}"
-                load_weights(loss_fn, loss_weights)
-                self.model = nn.Sequential(self.model, loss_fn)
+        self.model: ClsModel
 
     @override
-    def build_model(self) -> nn.Module:
+    def build_model(self) -> ClsModel:
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
             self.cfg.loss.scope = self.SCOPE
@@ -80,14 +75,14 @@ class ClsExporter(RunnerBase):
         self,
         input_size: tuple[int, int, int, int],
         half: bool = False,
-        device: str | int = "cpu",
-        onnx_file: Optional[str | Path] = None,
+        device: Literal["cpu"] | int = "cpu",
+        onnx_file: Path | str | None = None,
         dynamic_batch_size: bool = False,
         simplify: bool = False,
     ) -> None:
         # Warnings
         if half and device == "cpu":
-            raise Exception("half only compatible with GPU export")
+            raise ValueError("half only compatible with GPU export")
         # if half and dynamic_batch_size:
         #     raise Exception("half not compatible with dynamic")
 
@@ -136,7 +131,7 @@ class ClsExporter(RunnerBase):
         classes_file = self.cfg.train_dataloader.dataset.classes_file
         classes = pd.read_csv(classes_file, header=None)[0].to_list()
         names = json.dumps(classes, ensure_ascii=False, indent=2)
-        self.metadata = {"date": datetime.now().isoformat(), "names": names}
+        self.metadata = {"date": datetime.now().astimezone().isoformat(), "names": names}
         for k, v in self.metadata.items():
             meta = onnx_model.metadata_props.add()
             meta.key, meta.value = k, str(v)

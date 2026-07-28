@@ -1,11 +1,9 @@
-from typing import Optional
-
 import torch
 from rich import print
 from torch import nn
 from torchvision.models import SwinTransformer, swin_transformer
 
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
 
 SCOPE = "classification"
 
@@ -28,9 +26,7 @@ _num_features = {  # embed_dim * 2 ** (len(depths) - 1)
 }
 
 
-def _init_model(
-    model_name: str, num_classes: int, weights: Optional[str] = None
-) -> SwinTransformer:
+def _init_model(model_name: str, num_classes: int, weights: str | None = None) -> SwinTransformer:
     if weights is None:
         model = _swin_models[model_name](num_classes=num_classes)
     elif weights == "torchvision":
@@ -56,15 +52,15 @@ def _init_model(
 
 
 @MODELS.register(scope=SCOPE)
-def swin_v2_t(num_classes: int, weights: Optional[str] = None) -> SwinTransformer:
+def swin_v2_t(num_classes: int, weights: str | None = None) -> SwinTransformer:
     return _init_model("swin_v2_t", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def swin_v2_s(num_classes: int, weights: Optional[str] = None) -> SwinTransformer:
+def swin_v2_s(num_classes: int, weights: str | None = None) -> SwinTransformer:
     return _init_model("swin_v2_s", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def swin_v2_b(num_classes: int, weights: Optional[str] = None) -> SwinTransformer:
+def swin_v2_b(num_classes: int, weights: str | None = None) -> SwinTransformer:
     return _init_model("swin_v2_b", num_classes, weights)

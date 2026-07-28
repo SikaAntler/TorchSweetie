@@ -45,7 +45,7 @@ def print_report_old(filename: Path, digits: int) -> None:
             )
 
 
-def print_report(filename: Path, digits: int = 3, interval: int = 0) -> None:
+def print_cls_report(filename: Path, digits: int = 3, interval: int = 0) -> None:
     report = get_report(filename)
 
     N = 9  # len(precision)

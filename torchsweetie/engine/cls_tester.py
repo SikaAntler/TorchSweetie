@@ -5,20 +5,12 @@ import pandas as pd
 import torch
 from rich import print
 from sklearn.metrics import classification_report
-from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ..data import ClsDataPack, create_cls_dataloader
-from ..utils import (
-    LOSSES,
-    MODELS,
-    URL_B,
-    URL_E,
-    load_weights,
-    load_weights_for_model,
-    print_report,
-)
+from ..data import ClsDataPack, ClsModelOutput, create_cls_dataloader
+from ..models.classifiers import ClsModel
+from ..utils import MODELS, URL_B, URL_E, load_weights_for_model, print_cls_report
 from .runner import RunnerBase
 
 
@@ -34,21 +26,13 @@ class ClsTester(RunnerBase):
         self.y_pred = []
 
     @override
-    def build_model(self) -> nn.Module:
+    def build_model(self) -> ClsModel:
         if "scope" not in self.cfg.model:
             self.cfg.model.scope = self.SCOPE
-            self.cfg.loss.scope = self.SCOPE
 
         self.cfg.model.pop("_weights_", None)
         model = MODELS.create(self.cfg.model)
         load_weights_for_model(model, str(self.weights), True)
-
-        # optional
-        loss_fn: nn.Module = LOSSES.create(self.cfg.loss)
-        if any(True for _ in loss_fn.parameters()):
-            loss_weights = self.exp_dir / f"{self.weights.stem}-loss{self.weights.suffix}"
-            load_weights(loss_fn, loss_weights)
-            model = nn.Sequential(model, loss_fn)
 
         model.cuda()
 
@@ -77,9 +61,9 @@ class ClsTester(RunnerBase):
             data.targets = data.targets.cuda()
             data.ori_sizes = data.ori_sizes.cuda()
 
-            outputs = self.model(data)
+            output: ClsModelOutput = self.model(data)
 
-            predicts = torch.argmax(outputs, dim=1)
+            predicts = torch.argmax(output.logits, dim=1)
             self.y_pred.extend(predicts.tolist())
 
             pbar.update()
@@ -106,4 +90,4 @@ class ClsTester(RunnerBase):
         report.to_csv(filename)
         print(f"Saved the report: {URL_B}{filename}{URL_E}")
 
-        print_report(filename, digits)
+        print_cls_report(filename, digits)

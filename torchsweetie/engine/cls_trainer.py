@@ -13,7 +13,7 @@ from rich.progress import (
 from torch import Tensor
 from torch.utils.data import DataLoader
 
-from ..data import ClsDataPack, create_cls_dataloader
+from ..data import ClsDataPack, ClsModelOutput, create_cls_dataloader
 from ..utils import KEY_B, KEY_E, URL_B, URL_E
 from .trainer import EpochBasedTrainer
 
@@ -96,8 +96,8 @@ class ClsTrainer(EpochBasedTrainer):
                 losses: list[str] = []
 
                 with self.accelerator.autocast():
-                    outputs = self.model(data)
-                    loss_dict: Tensor | dict[str, Tensor] = self.loss_fn(outputs, data)
+                    output: ClsModelOutput = self.model(data)
+                    loss_dict: Tensor | dict[str, Tensor] = self.loss_fn(output, data)
 
                 if isinstance(loss_dict, Tensor):
                     loss = loss_dict
@@ -194,11 +194,9 @@ class ClsTrainer(EpochBasedTrainer):
                 data.ori_sizes = data.ori_sizes.to(self.device)
 
                 with self.accelerator.autocast():
-                    outputs = model(data)
-                    if self.loss_params:
-                        outputs = self.loss_fn(outputs, data)
+                    output: ClsModelOutput = model(data)
 
-                predicts = torch.argmax(outputs, dim=1)
+                predicts = torch.argmax(output.logits, dim=1)
                 metrics = self.accelerator.gather_for_metrics(predicts == data.targets)
                 corrects += metrics.sum().cpu().item()
 
@@ -241,11 +239,3 @@ class ClsTrainer(EpochBasedTrainer):
         model_file = self.exp_dir / f"{prefix}-{self.epoch}.pth"
         torch.save(model.state_dict(), model_file)
         self.print(f"Saved the {prefix} model: {URL_B}{model_file}{URL_E}")
-
-        # Loss
-        if not self.loss_params:
-            return
-        loss_fn = self.accelerator.unwrap_model(self.loss_fn)
-        loss_file = self.exp_dir / f"{prefix}-{self.epoch}-loss.pth"
-        torch.save(loss_fn.state_dict(), loss_file)
-        self.print(f"Saved the {prefix} loss fn: {URL_B}{loss_file}{URL_E}")

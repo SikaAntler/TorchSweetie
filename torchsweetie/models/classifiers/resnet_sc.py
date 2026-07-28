@@ -1,12 +1,10 @@
-from typing import Optional
-
 import torch
 from rich import print
 from torch import Tensor, nn
 from torchvision.models import resnet
 
-from ..data import ClsDataPack
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
+from ...data import ClsDataPack
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E
 from .resnet import ResNet
 
 SCOPE = "classification"
@@ -96,7 +94,7 @@ class ResNetSC(ResNet):
 
 
 def _init_model(
-    model_name: str, se_features: int, num_classes: int, weights: Optional[str] = None
+    model_name: str, se_features: int, num_classes: int, weights: str | None = None
 ) -> ResNetSC:
     if weights == "torchvision":
         pretrained_weights = _pretrained_weights[model_name]
@@ -117,7 +115,5 @@ def _init_model(
 
 
 @MODELS.register(scope=SCOPE)
-def resnext50_32x4d_sc(
-    se_features: int, num_classes: int, weights: Optional[str] = None
-) -> ResNetSC:
+def resnext50_32x4d_sc(se_features: int, num_classes: int, weights: str | None = None) -> ResNetSC:
     return _init_model("resnext50_32x4d", se_features, num_classes, weights)

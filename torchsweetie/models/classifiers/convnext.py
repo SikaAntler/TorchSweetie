@@ -1,10 +1,8 @@
-from typing import Optional
-
 from rich import print
 from torch import nn
 from torchvision.models import ConvNeXt, convnext
 
-from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
+from ...utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights
 
 SCOPE = "classification"
 
@@ -30,7 +28,7 @@ _num_features = {
 }
 
 
-def _init_model(model_name: str, num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
+def _init_model(model_name: str, num_classes: int, weights: str | None = None) -> ConvNeXt:
     if weights == "torchvision":
         _weights = _pretrained_weights[model_name]
         print(
@@ -53,20 +51,20 @@ def _init_model(model_name: str, num_classes: int, weights: Optional[str] = None
 
 
 @MODELS.register(scope=SCOPE)
-def convnext_tiny(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
+def convnext_tiny(num_classes: int, weights: str | None = None) -> ConvNeXt:
     return _init_model("tiny", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def convnext_small(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
+def convnext_small(num_classes: int, weights: str | None = None) -> ConvNeXt:
     return _init_model("small", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def convnext_base(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
+def convnext_base(num_classes: int, weights: str | None = None) -> ConvNeXt:
     return _init_model("base", num_classes, weights)
 
 
 @MODELS.register(scope=SCOPE)
-def convnext_large(num_classes: int, weights: Optional[str] = None) -> ConvNeXt:
+def convnext_large(num_classes: int, weights: str | None = None) -> ConvNeXt:
     return _init_model("large", num_classes, weights)
