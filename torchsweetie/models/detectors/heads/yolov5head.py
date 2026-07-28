@@ -1,11 +1,14 @@
 import math
+from collections.abc import Sequence
 
 import torch
 from torch import Tensor, nn
 
 
 class YOLOv5Head(nn.Module):
-    def __init__(self, num_classes: int, anchors: list[list[int]], strides: list[int]) -> None:
+    def __init__(
+        self, num_classes: int, anchors: Sequence[Sequence[int]], strides: Sequence[int]
+    ) -> None:
         super().__init__()
 
         self.nc = num_classes

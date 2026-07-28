@@ -1,4 +1,5 @@
 import math
+from collections.abc import Sequence
 
 import torch
 from torch import Tensor, nn
@@ -11,8 +12,8 @@ class YOLOv5DecoupledHead(nn.Module):
         self,
         num_classes: int,
         reg_max: int = 16,
-        strides: list[int] = [8, 16, 32],
-        num_channels: list[int] = [256, 512, 1024],
+        strides: Sequence[int] = (8, 16, 32),
+        num_channels: Sequence[int] = (256, 512, 1024),
     ) -> None:
         super().__init__()
 

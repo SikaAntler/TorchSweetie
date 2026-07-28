@@ -94,7 +94,7 @@ def xyxy2cxcywh(boxes: Tensor, normalized: bool = True) -> Tensor:
         w += 1
         h += 1
 
-    return torch.hstack([cx, cy, w, h])
+    return torch.cat([cx, cy, w, h], 1)
 
 
 def cxcywh2xyxy(boxes: Tensor, normalized: bool = True) -> Tensor:
@@ -121,7 +121,7 @@ def cxcywh2xyxy(boxes: Tensor, normalized: bool = True) -> Tensor:
     x2 = cx + half_w
     y2 = cy + half_h
 
-    return torch.hstack([x1, y1, x2, y2])
+    return torch.cat([x1, y1, x2, y2], 1)
 
 
 def denormalize(
@@ -148,9 +148,6 @@ def denormalize(
     if box_format == BoxFormat.xyxy:
         boxes[:, 2] *= img_w - 1
         boxes[:, 3] *= img_h - 1
-    elif box_format == BoxFormat.xywh:
-        boxes[:, 2] *= img_w
-        boxes[:, 3] *= img_h
-    elif box_format == BoxFormat.cxcywh:
+    elif box_format == BoxFormat.xywh or box_format == BoxFormat.cxcywh:
         boxes[:, 2] *= img_w
         boxes[:, 3] *= img_h

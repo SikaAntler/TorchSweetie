@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 from torch import nn
 
 from ...data import DetDataPack
@@ -14,7 +16,7 @@ class YOLOv5Plus(nn.Module):
         num_classes: int,
         reg_max: int = 16,
         in_channels: int = 3,
-        strides: list[int] = [8, 16, 32],
+        strides: Sequence[int] = (8, 16, 32),
     ) -> None:
         super().__init__()
 
@@ -26,14 +28,13 @@ class YOLOv5Plus(nn.Module):
 
     def initialize_weights(self) -> None:
         for m in self.modules():
-            t = type(m)
-            if t is nn.Conv2d:
+            if isinstance(m, nn.Conv2d):
                 pass
-            elif t is nn.BatchNorm2d:
-                m.eps = 1e-3  # ty: ignore
-                m.momentum = 0.03  # ty: ignore
-            elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
-                m.inplace = True  # ty: ignore
+            elif isinstance(m, nn.BatchNorm2d):
+                m.eps = 1e-3
+                m.momentum = 0.03
+            elif isinstance(m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)):
+                m.inplace = True
 
     def forward(self, data: DetDataPack):
         x = data.images

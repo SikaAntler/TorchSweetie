@@ -16,7 +16,6 @@ __all__ = [
     "DetExporter",
     "DetTester",
     "DetTrainer",
-    "RunnerBase",
     "EpochBasedHook",
     "EpochBasedTrainer",
     "HookBase",

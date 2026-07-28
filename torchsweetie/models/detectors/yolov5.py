@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 import torch
 from torch import Tensor, nn
 
@@ -15,10 +17,10 @@ class YOLOv5(nn.Module):
     def __init__(
         self,
         num_classes: int,
-        anchors: list[list[int]],
+        anchors: Sequence[Sequence[int]],
         in_channels: int = 3,
-        strides: list[int] = [8, 16, 32],
-        max_nms: int = 30000,
+        strides: Sequence[int] = (8, 16, 32),
+        max_nms: int = 3840,
     ) -> None:
         super().__init__()
 
@@ -35,16 +37,17 @@ class YOLOv5(nn.Module):
 
     def initialize_weights(self) -> None:
         for m in self.modules():
-            t = type(m)
-            if t is nn.Conv2d:
+            if isinstance(m, nn.Conv2d):
                 pass
-            elif t is nn.BatchNorm2d:
-                m.eps = 1e-3  # ty: ignore
-                m.momentum = 0.03  # ty: ignore
-            elif t in [nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU]:
-                m.inplace = True  # ty: ignore
+            elif isinstance(m, nn.BatchNorm2d):
+                m.eps = 1e-3
+                m.momentum = 0.03
+            elif isinstance(m, (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU)):
+                m.inplace = True
 
-    def forward(self, data: DetDataPack) -> Tensor | DetResult | list[DetResult]:
+    def forward(
+        self, data: DetDataPack
+    ) -> Tensor | tuple[Tensor, Tensor, Tensor] | list[DetResult]:
         x = data.images
 
         x = self.backbone(x)

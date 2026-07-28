@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import override
+from zoneinfo import ZoneInfo
 
 import onnx
 import pandas as pd
@@ -9,7 +10,7 @@ import torch
 from rich import print
 from torch import Tensor, nn
 
-from ..data import DetDataPack
+from ..data import DetDataPack, DetResult
 from ..utils import KEY_B, KEY_E, MODELS, URL_B, URL_E, load_weights_for_model
 from .runner import RunnerBase
 
@@ -21,12 +22,12 @@ class ONNXExportWrapper(nn.Module):
         self.model = model
 
         bs, _, H, W = input_size
-        # self.
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
         data = DetDataPack(torch.tensor([]), x, [], torch.tensor([]), torch.tensor([]))
+        output: DetResult = self.model(data)
 
-        return self.model(data)
+        return output.boxes, output.scores, output.cls_idxs.to(torch.int32)
 
 
 class DetExporter(RunnerBase):
@@ -90,6 +91,7 @@ class DetExporter(RunnerBase):
             f,
             input_names=["input"],
             output_names=["boxes", "scores", "cls_idxs"],
+            dynamo=True,
             external_data=False,
         )
         print(f"Saved the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
@@ -99,7 +101,10 @@ class DetExporter(RunnerBase):
         classes_file = self.cfg.train_dataloader.dataset.classes_file
         classes = pd.read_csv(classes_file, header=None)[0].to_list()
         names = json.dumps(classes, ensure_ascii=False, indent=2)
-        self.metadata = {"date": datetime.now().isoformat(), "names": names}
+        self.metadata = {
+            "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+            "names": names,
+        }
         for k, v in self.metadata.items():
             meta = onnx_model.metadata_props.add()
             meta.key, meta.value = k, str(v)

@@ -11,7 +11,7 @@ from torch import Tensor
 class BBox:
     auto: bool
     label: str
-    score: float
+    score: float  # 模型预测的置信度，人工标注时恒为1
     left: float
     top: float
     right: float
@@ -34,8 +34,16 @@ class BBox:
         return self.bottom - self.top + 1
 
     @property
+    def area(self) -> float:
+        return self.width * self.height
+
+    @property
     def lw(self) -> tuple[float, float]:
         return max(self.width, self.height), min(self.width, self.height)
+
+    @property
+    def lwr(self) -> float:
+        return max(self.width / self.height, self.height / self.width)
 
     @property
     def center_x(self) -> float:
@@ -47,27 +55,27 @@ class BBox:
 
     @property
     def x(self) -> int:
-        return int(round(self.left))
+        return round(self.left)
 
     @property
     def y(self) -> int:
-        return int(round(self.top))
+        return round(self.top)
 
     @property
     def w(self) -> int:
-        return int(round(self.width))
+        return round(self.width)
 
     @property
     def h(self) -> int:
-        return int(round(self.height))
+        return round(self.height)
 
     @property
     def cx(self) -> int:
-        return int(round(self.center_x))
+        return round(self.center_x)
 
     @property
     def cy(self) -> int:
-        return int(round(self.center_y))
+        return round(self.center_y)
 
 
 @dataclass
