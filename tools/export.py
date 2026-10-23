@@ -36,7 +36,12 @@ def main(cfg) -> None:
             )
         case "detection":
             exporter = DetExporter(cfg_file, exp_dir, weights)
-            exporter.export_onnx(input_size, cfg.half, cfg.onnx_file, cfg.simplify)
+            exporter.export_onnx(
+                input_size,
+                simplify=cfg.simplify,
+                half=cfg.half,
+                calibration_batches=cfg.calibration_batches,
+            )
 
 
 if __name__ == "__main__":
@@ -84,9 +89,28 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "--simplify",
+        action="store_true",
+        help="whether to simplify the onnx model",
+    )
+
+    parser.add_argument(
         "--half",
         action="store_true",
-        help="the dtype for the input and model",
+        help=(
+            "detection: FP16/FP32 mixed precision with FP32 input/output; "
+            "classification: FP16 input and model"
+        ),
+    )
+
+    parser.add_argument(
+        "--calibration-batches",
+        type=int,
+        default=8,
+        help=(
+            "maximum training-image batches for detection --half (default: 8); "
+            "0 uses ModelOpt random inputs; batch size comes from --input-size"
+        ),
     )
 
     parser.add_argument(
@@ -108,12 +132,6 @@ if __name__ == "__main__":
         "--dynamic",
         action="store_true",
         help="whether using dynamic batch size",
-    )
-
-    parser.add_argument(
-        "--simplify",
-        action="store_true",
-        help="whether to simplify the onnx model",
     )
 
     main(parser.parse_args())

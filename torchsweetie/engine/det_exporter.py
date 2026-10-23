@@ -4,9 +4,12 @@ from pathlib import Path
 from typing import override
 from zoneinfo import ZoneInfo
 
+import cv2
+import numpy as np
 import onnx
 import pandas as pd
 import torch
+from PIL import Image
 from rich import print
 from torch import Tensor, nn
 
@@ -16,14 +19,12 @@ from .runner import RunnerBase
 
 
 class ONNXExportWrapper(nn.Module):
-    def __init__(self, model: nn.Module, input_size: tuple[int, int, int, int]) -> None:
+    def __init__(self, model: nn.Module) -> None:
         super().__init__()
 
         self.model = model
 
-        bs, _, H, W = input_size
-
-    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:
+    def forward(self, x: Tensor) -> tuple[Tensor, Tensor, Tensor]:  # ty: ignore[invalid-mutable-override]
         data = DetDataPack(torch.tensor([]), x, [], torch.tensor([]), torch.tensor([]))
         output: DetResult = self.model(data)
 
@@ -59,30 +60,23 @@ class DetExporter(RunnerBase):
     def run(self) -> None:
         pass
 
+    @torch.no_grad()
     def export_onnx(
         self,
         input_size: tuple[int, int, int, int],
-        half: bool = False,
-        onnx_file: str | Path | None = None,
+        *,
         simplify: bool = False,
+        half: bool = False,
+        calibration_batches: int = 64,
     ) -> None:
-        assert len(input_size) == 4
-        x = torch.randn(input_size)
-
-        model = ONNXExportWrapper(self.model, input_size)
-        model.eval()
-
         if half:
-            x = x.half()
-            model.half()
+            from modelopt.onnx.autocast import convert_to_mixed_precision
 
-        x = x.cuda()
-        model.cuda()
+        model = ONNXExportWrapper(self.model).eval().cuda()
 
-        if onnx_file is None:
-            f = self.weights.with_suffix(".onnx")
-        else:
-            f = self.exp_dir / onnx_file
+        x = torch.randn(input_size, dtype=torch.float32).cuda()
+
+        f = self.weights.with_suffix(".onnx")
 
         torch.onnx.export(
             model,
@@ -93,10 +87,43 @@ class DetExporter(RunnerBase):
             dynamo=True,
             external_data=False,
         )
-        print(f"Saved the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
+        print(f"Saved the {KEY_B}ONNX{KEY_E} model: {URL_B}{f}{URL_E}")
 
-        # Metadata
         onnx_model = onnx.load(f)
+
+        if simplify:
+            import onnxslim
+
+            print(f"Simplifying the ONNX model with onnxslim {onnxslim.__version__}...")
+            onnx_model = onnxslim.slim(onnx_model)
+            onnx.save(onnx_model, f)
+            print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
+
+        if half:
+            import modelopt
+
+            print(
+                f"Converting ONNX to FP16 mixed precision with modelopt {modelopt.__version__}..."
+            )
+
+            if calibration_batches != 0:
+                calibration_data = self._create_calibration_data(
+                    input_size, calibration_batches, self.exp_dir / "calibration.npz"
+                )
+            else:
+                calibration_data = None
+
+            onnx_model = convert_to_mixed_precision(
+                str(f),
+                keep_io_types=True,
+                calibration_data=calibration_data,
+                providers=["cpu"],
+            )
+
+            f = f.with_stem(f"{f.stem}-fp16")
+            onnx.save(onnx_model, f)
+            print(f"Saved the {KEY_B}FP16{KEY_E} mixed precision model : {URL_B}{f}{URL_E}")
+
         classes_file = self.cfg.train_dataloader.dataset.classes_file
         classes = pd.read_csv(classes_file, header=None)[0].to_list()
         names = json.dumps(classes, ensure_ascii=False, indent=2)
@@ -104,17 +131,37 @@ class DetExporter(RunnerBase):
             "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
             "names": names,
         }
-        for k, v in self.metadata.items():
-            meta = onnx_model.metadata_props.add()
-            meta.key, meta.value = k, str(v)
+        metadata = {p.key: p.value for p in onnx_model.metadata_props}
+        metadata.update(self.metadata)
+        onnx.helper.set_model_props(onnx_model, metadata)
         onnx.save(onnx_model, f)
         print(f"Added the {KEY_B}metadata{KEY_E}: {URL_B}{f}{URL_E}")
 
-        if simplify:
-            import onnxslim
+    def _create_calibration_data(
+        self,
+        input_size: tuple[int, int, int, int],
+        calibration_batches: int,
+        output_file: Path,
+    ) -> str:
+        batch_size, channels, height, width = input_size
+        assert channels == 3, "Training-image calibration requires RGB input (C=3)"
 
-            print(f"Starting to slim with onnxslim {onnxslim.__version__}...")
-            onnx_model = onnx.load(f)
-            onnx_model = onnxslim.slim(onnx_model)
-            onnx.save(onnx_model, f)
-            print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
+        dataset_file = self.cfg.train_dataloader.dataset.dataset_file
+        image_paths = pd.read_csv(dataset_file, header=None)[0].to_list()
+        assert len(image_paths) // batch_size >= calibration_batches
+
+        num_images = calibration_batches * batch_size
+        indices = np.random.default_rng(0).choice(len(image_paths), num_images, replace=False)
+        images = np.empty((num_images, channels, height, width), dtype=np.float32)
+
+        for i, idx in enumerate(indices):
+            image = np.array(Image.open(image_paths[idx]))
+            assert image is not None
+            image = cv2.resize(image, (width, height))
+            images[i] = image.transpose(2, 0, 1)  # (H, W, 3) -> (3, H, W)
+
+        images /= 255.0
+
+        np.savez(output_file, input=images)
+
+        return str(output_file)
