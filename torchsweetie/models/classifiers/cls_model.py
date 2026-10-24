@@ -13,7 +13,7 @@ class ClsModel(nn.Module):
         self.head = head
         self.requires_data_pack = requires_data_pack
 
-    def forward(self, data: ClsDataPack) -> ClsModelOutput:
+    def forward(self, data: ClsDataPack) -> ClsModelOutput:  # ty: ignore[invalid-mutable-override]
         embeddings = self.backbone(data if self.requires_data_pack else data.inputs)
         logits = self.head(embeddings)
 

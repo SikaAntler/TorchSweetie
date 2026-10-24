@@ -124,12 +124,14 @@ class DetExporter(RunnerBase):
             onnx.save(onnx_model, f)
             print(f"Saved the {KEY_B}FP16{KEY_E} mixed precision model : {URL_B}{f}{URL_E}")
 
+        # Metadata
         classes_file = self.cfg.train_dataloader.dataset.classes_file
         classes = pd.read_csv(classes_file, header=None)[0].to_list()
         names = json.dumps(classes, ensure_ascii=False, indent=2)
         self.metadata = {
             "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
             "names": names,
+            "task": "detection",
         }
         metadata = {p.key: p.value for p in onnx_model.metadata_props}
         metadata.update(self.metadata)

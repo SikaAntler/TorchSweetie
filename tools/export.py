@@ -30,8 +30,6 @@ def main(cfg) -> None:
                 cfg.input_size,
                 cfg.half,
                 cfg.device if cfg.device == "cpu" else int(cfg.device),
-                cfg.onnx_file,
-                cfg.dynamic_batch_size,
                 cfg.simplify,
             )
         case "detection":
@@ -118,20 +116,6 @@ if __name__ == "__main__":
         type=str,
         required=True,
         help="running device, e.g. cpu or integer for cuda",
-    )
-
-    parser.add_argument(
-        "--onnx-file",
-        default=None,
-        type=str,
-        help="the output onnx file (relative)",
-    )
-
-    parser.add_argument(
-        "--dynamic-batch-size",
-        "--dynamic",
-        action="store_true",
-        help="whether using dynamic batch size",
     )
 
     main(parser.parse_args())
