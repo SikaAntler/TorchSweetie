@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import onnx
 import pandas as pd
 import torch
+import torch.nn.functional as F
 from rich import print
 from torch import Tensor, nn
 
@@ -24,7 +25,9 @@ from .runner import RunnerBase
 
 
 class ONNXExportWrapper(nn.Module):
-    def __init__(self, model: ClsModel, input_size: tuple[int, int, int, int]) -> None:
+    def __init__(
+        self, model: ClsModel, input_size: tuple[int, int, int, int], requires_softmax: bool
+    ) -> None:
         super().__init__()
 
         self.model = model
@@ -33,11 +36,16 @@ class ONNXExportWrapper(nn.Module):
         self.targets = torch.LongTensor([0] * batch_size)
         self.ori_sizes = torch.tensor([(H, W)] * batch_size)
 
+        self.requires_softmax = requires_softmax
+
     def forward(self, x: Tensor) -> Tensor:  # ty: ignore[invalid-mutable-override]
         data = ClsDataPack(x, self.targets, self.ori_sizes)
         x: ClsModelOutput = self.model(data)
 
-        return x.logits
+        if self.requires_softmax:
+            return F.softmax(x.logits, 1)
+        else:
+            return x.logits
 
 
 class ClsExporter(RunnerBase):
@@ -47,6 +55,15 @@ class ClsExporter(RunnerBase):
         super().__init__(cfg_file, exp_dir, weights)
 
         self.model: ClsModel
+
+        classes_file = self.cfg.train_dataloader.dataset.classes_file
+        classes = pd.read_csv(classes_file, header=None)[0].to_list()
+        names = json.dumps(classes, ensure_ascii=False, indent=2)
+        self.metadata = {
+            "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+            "names": names,
+            "task": "classification",
+        }
 
     @override
     def build_model(self) -> ClsModel:
@@ -72,6 +89,7 @@ class ClsExporter(RunnerBase):
     def export_onnx(
         self,
         input_size: tuple[int, int, int, int],
+        requires_softmax: bool = False,
         half: bool = False,
         device: Literal["cpu"] | int = "cpu",
         simplify: bool = False,
@@ -83,7 +101,7 @@ class ClsExporter(RunnerBase):
         assert len(input_size) == 4
         x = torch.randn(input_size)
 
-        model = ONNXExportWrapper(self.model, input_size).eval()
+        model = ONNXExportWrapper(self.model, input_size, requires_softmax).eval()
 
         if half:
             x = x.half()
@@ -103,7 +121,7 @@ class ClsExporter(RunnerBase):
             output_names=["output"],
             external_data=False,
         )
-        print(f"Saved the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
+        print(f"Exported the {KEY_B}onnx{KEY_E} model: {URL_B}{f}{URL_E}")
 
         onnx_model = onnx.load(f)
 
@@ -112,18 +130,8 @@ class ClsExporter(RunnerBase):
 
             print(f"Simplifying the ONNX model with onnxslim {onnxslim.__version__}...")
             onnx_model = onnxslim.slim(onnx_model)
-            onnx.save(onnx_model, f)
-            print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
 
         # Metadata
-        classes_file = self.cfg.train_dataloader.dataset.classes_file
-        classes = pd.read_csv(classes_file, header=None)[0].to_list()
-        names = json.dumps(classes, ensure_ascii=False, indent=2)
-        self.metadata = {
-            "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
-            "names": names,
-            "task": "classification",
-        }
         metadata = {p.key: p.value for p in onnx_model.metadata_props}
         metadata.update(self.metadata)
         onnx.helper.set_model_props(onnx_model, metadata)

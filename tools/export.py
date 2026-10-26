@@ -28,6 +28,7 @@ def main(cfg) -> None:
             exporter = ClsExporter(cfg_file, exp_dir, weights)
             exporter.export_onnx(
                 cfg.input_size,
+                cfg.softmax,
                 cfg.half,
                 cfg.device if cfg.device == "cpu" else int(cfg.device),
                 cfg.simplify,
@@ -84,6 +85,12 @@ if __name__ == "__main__":
         type=int,
         required=True,
         help="the input size for dummy input (B, C, H, W)",
+    )
+
+    parser.add_argument(
+        "--softmax",
+        action="store_true",
+        help="add softmax after the output of classification model",
     )
 
     parser.add_argument(
