@@ -28,10 +28,11 @@ def main(cfg) -> None:
             exporter = ClsExporter(cfg_file, exp_dir, weights)
             exporter.export_onnx(
                 cfg.input_size,
-                cfg.softmax,
-                cfg.half,
-                cfg.device if cfg.device == "cpu" else int(cfg.device),
-                cfg.simplify,
+                requires_softmax=cfg.softmax,
+                device=cfg.device if cfg.device == "cpu" else int(cfg.device),
+                simplify=cfg.simplify,
+                half=cfg.half,
+                calibration_batches=cfg.calibration_batches,
             )
         case "detection":
             exporter = DetExporter(cfg_file, exp_dir, weights)
@@ -112,10 +113,7 @@ if __name__ == "__main__":
         "--calibration-batches",
         type=int,
         default=8,
-        help=(
-            "maximum training-image batches for detection --half (default: 8); "
-            "0 uses ModelOpt random inputs; batch size comes from --input-size"
-        ),
+        help="maximum training-image batches for detection --half (default: 8)",
     )
 
     parser.add_argument(

@@ -37,6 +37,15 @@ class DetExporter(RunnerBase):
     def __init__(self, cfg_file: Path, exp_dir: Path, weights: str) -> None:
         super().__init__(cfg_file, exp_dir, weights)
 
+        classes_file = self.cfg.train_dataloader.dataset.classes_file
+        classes = pd.read_csv(classes_file, header=None)[0].to_list()
+        names = json.dumps(classes, ensure_ascii=False, indent=2)
+        self.metadata = {
+            "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
+            "names": names,
+            "task": "detection",
+        }
+
     @override
     def build_model(self) -> nn.Module:
         if "scope" not in self.cfg.model:
@@ -87,7 +96,7 @@ class DetExporter(RunnerBase):
             dynamo=True,
             external_data=False,
         )
-        print(f"Saved the {KEY_B}ONNX{KEY_E} model: {URL_B}{f}{URL_E}")
+        print(f"Exported the {KEY_B}ONNX{KEY_E} model: {URL_B}{f}{URL_E}")
 
         onnx_model = onnx.load(f)
 
@@ -96,8 +105,6 @@ class DetExporter(RunnerBase):
 
             print(f"Simplifying the ONNX model with onnxslim {onnxslim.__version__}...")
             onnx_model = onnxslim.slim(onnx_model)
-            onnx.save(onnx_model, f)
-            print(f"Saved the {KEY_B}simplified{KEY_E} model: {URL_B}{f}{URL_E}")
 
         if half:
             import modelopt
@@ -125,14 +132,6 @@ class DetExporter(RunnerBase):
             print(f"Saved the {KEY_B}FP16{KEY_E} mixed precision model : {URL_B}{f}{URL_E}")
 
         # Metadata
-        classes_file = self.cfg.train_dataloader.dataset.classes_file
-        classes = pd.read_csv(classes_file, header=None)[0].to_list()
-        names = json.dumps(classes, ensure_ascii=False, indent=2)
-        self.metadata = {
-            "date": datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(),
-            "names": names,
-            "task": "detection",
-        }
         metadata = {p.key: p.value for p in onnx_model.metadata_props}
         metadata.update(self.metadata)
         onnx.helper.set_model_props(onnx_model, metadata)
@@ -140,10 +139,7 @@ class DetExporter(RunnerBase):
         print(f"Added the {KEY_B}metadata{KEY_E}: {URL_B}{f}{URL_E}")
 
     def _create_calibration_data(
-        self,
-        input_size: tuple[int, int, int, int],
-        calibration_batches: int,
-        output_file: Path,
+        self, input_size: tuple[int, int, int, int], calibration_batches: int, output_file: Path
     ) -> str:
         batch_size, channels, height, width = input_size
         assert channels == 3, "Training-image calibration requires RGB input (C=3)"
