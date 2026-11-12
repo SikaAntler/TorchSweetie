@@ -28,7 +28,7 @@ class BalancedSoftmaxLoss(ClsLoss):
         super().__init__()
 
         dist = pd.read_csv(dist_file, header=None, index_col=None)[1].to_numpy()
-        self.samples_per_class = nn.Buffer(torch.tensor(dist, torch.float32))
+        self.samples_per_class = nn.Buffer(torch.tensor(dist, dtype=torch.float32))
 
     @override
     def forward(self, output: ClsModelOutput, data: ClsDataPack) -> Tensor:
