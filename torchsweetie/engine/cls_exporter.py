@@ -5,7 +5,6 @@ from typing import Literal, override
 from zoneinfo import ZoneInfo
 
 import numpy as np
-import onnx
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -99,7 +98,14 @@ class ClsExporter(RunnerBase):
         half: bool = False,
         calibration_batches: int = 8,
     ) -> None:
+        import onnx
+        import onnxscript  # noqa: F401
+
+        if simplify:
+            import onnxslim
+
         if half:
+            import modelopt
             from modelopt.onnx.autocast import convert_to_mixed_precision
 
         x = torch.randn(input_size)
@@ -126,14 +132,10 @@ class ClsExporter(RunnerBase):
         onnx_model = onnx.load(f)
 
         if simplify:
-            import onnxslim
-
             print(f"Simplifying the ONNX model with onnxslim {onnxslim.__version__}...")
             onnx_model = onnxslim.slim(onnx_model)
 
         if half:
-            import modelopt
-
             print(
                 f"Converting ONNX to FP16 mixed precision with modelopt {modelopt.__version__}..."
             )

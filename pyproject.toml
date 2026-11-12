@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "torchsweetie"
 requires-python = ">=3.14"
@@ -13,27 +9,37 @@ dynamic = ["version"]
 dependencies = [
   "accelerate",
   "faster-coco-eval",
-  "matplotlib",
   "natsort",
   "numpy",
-  "nvidia-modelopt[onnx]",
   "omegaconf",
-  "onnx",
-  "onnxscript",
-  "onnxslim",
   "opencv-python-headless",
   "pandas",
   "pillow",
   "pypinyin",
   "pyyaml",
-  "requests",
   "rich",
   "scikit-learn",
+  "scipy",
   "torch",
   "torchmetrics",
   "torchvision",
   "tqdm",
 ]
+
+[project.optional-dependencies]
+all = [
+  "cleanlab",
+  "matplotlib",
+  "nvidia-modelopt[onnx]",
+  "onnx",
+  "onnxscript",
+  "onnxslim",
+  "requests",
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.dynamic]
 version = { attr = "torchsweetie.__version__" }

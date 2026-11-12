@@ -31,5 +31,6 @@ Since the project is lightweight and easy to modified, I recommend to install it
 ```bash
 $ git clone https://github.com/SikaAntler/TorchSweetie.git
 $ cd TorchSweetie/
-$ pip install -e .
+$ pip install . # train only
+$ pip install -e ".[all]" # full function
 ```

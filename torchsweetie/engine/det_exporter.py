@@ -6,7 +6,6 @@ from zoneinfo import ZoneInfo
 
 import cv2
 import numpy as np
-import onnx
 import pandas as pd
 import torch
 from PIL import Image
@@ -78,7 +77,14 @@ class DetExporter(RunnerBase):
         half: bool = False,
         calibration_batches: int = 64,
     ) -> None:
+        import onnx
+        import onnxscript  # noqa: F401
+
+        if simplify:
+            import onnxslim
+
         if half:
+            import modelopt
             from modelopt.onnx.autocast import convert_to_mixed_precision
 
         model = ONNXExportWrapper(self.model).eval().cuda()
@@ -101,14 +107,10 @@ class DetExporter(RunnerBase):
         onnx_model = onnx.load(f)
 
         if simplify:
-            import onnxslim
-
             print(f"Simplifying the ONNX model with onnxslim {onnxslim.__version__}...")
             onnx_model = onnxslim.slim(onnx_model)
 
         if half:
-            import modelopt
-
             print(
                 f"Converting ONNX to FP16 mixed precision with modelopt {modelopt.__version__}..."
             )
